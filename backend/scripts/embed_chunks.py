@@ -12,6 +12,7 @@ import app.models  # noqa: F401
 from app.core.database import AsyncSessionLocal
 from app.core.embedder import embed_texts
 from app.models.chunk import Chunk
+from app.models.profile import CompanyProfile
 from app.models.tender import Tender
 from sqlalchemy import select
 
@@ -65,9 +66,26 @@ async def embed_all_unembedded_tenders() -> None:
         print("Done embedding all tenders.")
 
 
+async def embed_all_unembedded_profiles() -> None:
+    async with AsyncSessionLocal() as session:
+        stmt = select(CompanyProfile).where(CompanyProfile.embedding.is_(None))
+        profiles = list((await session.execute(stmt)).scalars().all())
+        print(f"Found {len(profiles)} profiles with missing embeddings.")
+
+        for profile in profiles:
+            vector = (await embed_texts(
+                [f"{profile.name}. {profile.description}"], is_query=False
+            ))[0]
+            profile.embedding = vector
+
+        await session.commit()
+        print("Done embedding profiles.")
+
+
 async def main() -> None:
     await embed_all_unembedded_chunks()
     await embed_all_unembedded_tenders()
+    await embed_all_unembedded_profiles()
 
 
 if __name__ == "__main__":
