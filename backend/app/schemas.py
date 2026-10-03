@@ -106,6 +106,8 @@ class Pricelist(BaseModel):
     status: PricelistStatus
     item_count: int
 
+    model_config = {"from_attributes": True}
+
 
 class CatalogueItem(BaseModel):
     id: int
@@ -113,6 +115,8 @@ class CatalogueItem(BaseModel):
     name: str
     description: str
     price: MoneyAmount
+
+    model_config = {"from_attributes": True}
 
 
 class CatalogueItemUpdate(BaseModel):

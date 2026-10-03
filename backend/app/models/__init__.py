@@ -5,9 +5,11 @@
 from app.models.award import Award
 from app.models.bid import BidStatistic
 from app.models.buyer import Buyer
+from app.models.catalogue import CatalogueItem
 from app.models.chunk import Chunk
 from app.models.document import Document
 from app.models.llm_cache import LLMCache
+from app.models.pricelist import Pricelist
 from app.models.profile import CompanyProfile
 from app.models.tender import Tender
 
@@ -15,9 +17,11 @@ __all__ = [
     "Award",
     "BidStatistic",
     "Buyer",
+    "CatalogueItem",
     "Chunk",
     "Document",
     "LLMCache",
+    "Pricelist",
     "CompanyProfile",
     "Tender",
 ]

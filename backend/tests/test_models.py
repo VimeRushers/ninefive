@@ -10,10 +10,12 @@ from app.models import (
     Award,
     BidStatistic,
     Buyer,
+    CatalogueItem,
     Chunk,
     CompanyProfile,
     Document,
     LLMCache,
+    Pricelist,
     Tender,
 )
 from sqlalchemy import inspect as sa_inspect
@@ -43,6 +45,8 @@ def test_all_models_registered_with_base():
         "documents",
         "chunks",
         "llm_cache",
+        "pricelists",
+        "catalogue_items",
     }
     assert expected.issubset(registered), f"Missing tables: {expected - registered}"
 
@@ -63,6 +67,8 @@ def test_all_models_registered_with_base():
         (Document, "documents"),
         (Chunk, "chunks"),
         (LLMCache, "llm_cache"),
+        (Pricelist, "pricelists"),
+        (CatalogueItem, "catalogue_items"),
     ],
 )
 def test_table_name(model, expected_table):
@@ -185,6 +191,33 @@ def test_llm_cache_columns():
     assert required.issubset(cols), f"Missing LLMCache columns: {required - cols}"
 
 
+def test_pricelist_columns():
+    cols = column_names(Pricelist)
+    required = {
+        "id",
+        "profile_id",
+        "file_name",
+        "status",
+        "item_count",
+        "uploaded_at",
+    }
+    assert required.issubset(cols), f"Missing Pricelist columns: {required - cols}"
+
+
+def test_catalogue_item_columns():
+    cols = column_names(CatalogueItem)
+    required = {
+        "id",
+        "pricelist_id",
+        "name",
+        "description",
+        "price",
+        "created_at",
+        "updated_at",
+    }
+    assert required.issubset(cols), f"Missing CatalogueItem columns: {required - cols}"
+
+
 # ---------------------------------------------------------------------------
 # Relationships
 # ---------------------------------------------------------------------------
@@ -203,6 +236,16 @@ def test_buyer_has_tenders_relationship():
 def test_document_has_chunks_relationship():
     rels = {r.key for r in sa_inspect(Document).mapper.relationships}
     assert "chunks" in rels
+
+
+def test_profile_has_pricelists_relationship():
+    rels = {r.key for r in sa_inspect(CompanyProfile).mapper.relationships}
+    assert "pricelists" in rels
+
+
+def test_pricelist_cascade_deletes_items():
+    rel = sa_inspect(Pricelist).mapper.relationships["items"]
+    assert "delete-orphan" in rel.cascade
 
 
 # ---------------------------------------------------------------------------
