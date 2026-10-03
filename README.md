@@ -2,6 +2,23 @@
 
 AI assistant for Moldovan public procurement (MTender/OCDS).
 
+## How we work
+
+The frontend is built first. The frontend team builds the whole UI against a mock API and
+merges it to `main`. The backend is built after that, to match the API contract in
+`frontend/src/api/types.ts`.
+
+## Quick start — frontend
+
+```bash
+cd frontend
+npm install
+npm run dev                       # → http://localhost:5173
+```
+
+It runs on a mock API, so no backend is needed. See [`frontend/README.md`](frontend/README.md)
+for the mock API, checks, folder owners and team rules.
+
 ## Quick start — backend only
 
 ```bash
@@ -16,7 +33,7 @@ alembic upgrade head              # run DB migrations
 uvicorn app.main:app --reload     # → http://localhost:8000/docs
 ```
 
-## Quick start — full Docker
+## Quick start — full Docker (backend and database)
 
 ```bash
 cp .env.example .env
@@ -30,6 +47,16 @@ ninefive/
 ├── docker-compose.yml
 ├── .env.example
 ├── README.md
+├── frontend/
+│   ├── README.md             ← how to run, team rules, who owns what
+│   └── src/
+│       ├── api/
+│       │   ├── types.ts      ← API contract the backend implements
+│       │   └── *.ts          ← fetch functions and data hooks per area
+│       ├── mocks/            ← mock API (MSW) and fictional data
+│       ├── features/         ← one folder per area: profile, board, tender, analyzer, integrity
+│       ├── components/       ← layout, shared components, shadcn/ui
+│       └── i18n/             ← Romanian, English and Russian text
 └── backend/
     ├── Dockerfile
     ├── requirements.txt
@@ -40,7 +67,7 @@ ninefive/
     │   └── versions/         ← generated migration files go here
     └── app/
         ├── main.py           ← FastAPI app + router registration
-        ├── schemas.py        ← Pydantic models (source of truth for all I/O)
+        ├── schemas.py        ← Pydantic models, to be updated to match the frontend contract
         ├── core/
         │   ├── config.py     ← settings from .env (pydantic-settings)
         │   ├── database.py   ← async SQLAlchemy engine + Base + get_db
@@ -56,24 +83,54 @@ ninefive/
 
 ## Branches
 
+Frontend:
+
+| Branch | Owner | Scope |
+|---|---|---|
+| `feat/frontend-profile` | 1 | Setup, API contract, company profile |
+| `feat/frontend-board` | 2 | Tender board, filters |
+| `feat/frontend-tender` | 3 | Tender detail page, eligibility, win chance |
+| `feat/frontend-analyzer` | 4 | Competitor analyzer |
+| `feat/frontend-integrity` | 5 | Integrity signals, buyer page, demo |
+
+Backend:
+
 | Branch | Owner | Scope |
 |---|---|---|
 | `feat/ingestion` | A | OCDS pull script, full DB schema, Alembic migrations |
 | `feat/search` | B | pgvector search, fit score, win-chance |
 | `feat/llm-analysis` | C | Eligibility checker, red-flag rules, DeepSeek calls |
-| `feat/frontend` | D | React/Streamlit UI, demo scenario |
 
-Merge to `main` often. `schemas.py` is the shared contract — coordinate before changing it.
+Merge to `main` often. The API contract is `frontend/src/api/types.ts`; coordinate before
+changing it.
 
 ## API endpoints
+
+Request and response shapes are in `frontend/src/api/types.ts`.
+
+- **mock**: the frontend's mock API answers it; the backend doesn't have it yet.
+- **stub**: the backend route exists but isn't implemented.
 
 | Method | Path | Status |
 |---|---|---|
 | `GET` | `/health` | ✅ live |
-| `POST` | `/profile` | stub |
-| `GET` | `/search?q=` | stub |
-| `GET` | `/tenders/{id}/analysis` | stub |
-| `GET` | `/buyers/{id}/profile` | stub |
+| `POST` | `/profile` | mock, backend stub |
+| `GET` | `/profile/{id}` | mock |
+| `PATCH` | `/profile/{id}` | mock |
+| `GET` | `/profile/lookup?idno=` | mock |
+| `GET` | `/profile/{id}/pricelists` | mock |
+| `POST` | `/profile/{id}/pricelists` | mock |
+| `DELETE` | `/profile/{id}/pricelists/{pricelist_id}` | mock |
+| `GET` | `/profile/{id}/catalogue` | mock |
+| `PATCH` | `/profile/{id}/catalogue/{item_id}` | mock |
+| `DELETE` | `/profile/{id}/catalogue/{item_id}` | mock |
+| `GET` | `/board?profile_id=` | mock |
+| `PATCH` | `/board/{tender_id}?profile_id=` | mock |
+| `GET` | `/tenders/{id}?profile_id=` | mock |
+| `GET` | `/tenders/{id}/analysis?profile_id=` | mock, backend stub |
+| `GET` | `/tenders/{id}/competitors` | mock |
+| `GET` | `/buyers/{id}/profile` | mock, backend stub |
+| `GET` | `/search?q=` | backend stub; the frontend searches through `/board?q=` instead |
 
 
 Help Moldovan businesses find public tenders worth bidding on and buyers compare submitted offers.
