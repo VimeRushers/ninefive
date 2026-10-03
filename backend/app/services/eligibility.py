@@ -9,6 +9,9 @@ from app.models.profile import CompanyProfile
 from app.models.tender import Tender
 from app.schemas import Citation, EligibilityItem, EligibilitySummary
 
+# Prompt/cache version shared by tenders.py and board.py
+ELIGIBILITY_VERSION = "eligibility_v4"
+
 
 def fallback_eligibility_items(
     tender: Tender, documents: list[Document]

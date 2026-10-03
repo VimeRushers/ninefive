@@ -17,17 +17,21 @@ from app.core.database import get_db
 from app.core.embedder import embed_texts
 from app.models.award import Award
 from app.models.board import BoardEntry
+from app.models.llm_cache import LLMCache
 from app.models.profile import CompanyProfile
 from app.models.tender import Tender
 from app.models.tender_change import TenderChange
 from app.schemas import (
     BoardCard,
     BoardResponse,
+    Citation,
+    EligibilitySummary,
     MoneyAmount,
     Stage,
     StageUpdate,
+    UnmetParameter,
 )
-from app.services.eligibility import board_eligibility
+from app.services.eligibility import ELIGIBILITY_VERSION
 from app.services.red_flags import evaluate_all_red_flags
 from app.services.tags import tags_for_cpv
 from app.services.win_chance import estimate_win_chance
@@ -88,12 +92,56 @@ def _cosine(a: list[float], b: list[float]) -> float:
     return dot / (norm_a * norm_b)
 
 
+def _cached_eligibility(
+    items: list[dict], tender: Tender
+) -> tuple[EligibilitySummary, list[UnmetParameter]]:
+    notice = Citation(
+        document_id=tender.ocds_id,
+        document_title="Anunț de participare",
+        url=f"https://mtender.gov.md/tenders/{tender.ocds_id}",
+    )
+    docs_by_id = {str(d.id): d for d in (tender.documents or [])}
+
+    met_count = sum(1 for item in items if item.get("met") is True)
+    unknown_count = sum(1 for item in items if item.get("met") is None)
+
+    reasons: list[UnmetParameter] = []
+    for item in items:
+        if item.get("met") is not False:
+            continue
+        document = docs_by_id.get(str(item.get("document_id")))
+        citation = (
+            Citation(
+                document_id=str(document.id),
+                document_title=document.title or f"Document {document.id}",
+                url=document.url or "",
+                page=item.get("page") if isinstance(item.get("page"), int) else None,
+            )
+            if document is not None
+            else notice
+        )
+        reasons.append(
+            UnmetParameter(
+                parameter=str(item.get("requirement") or "Cerință de eligibilitate"),
+                required=str(item.get("threshold") or "conform caietului de sarcini"),
+                ours=None,
+                citation=citation,
+            )
+        )
+
+    summary = EligibilitySummary(
+        met_count=met_count, total_count=len(items), unknown_count=unknown_count
+    )
+    return summary, reasons
+
+
 def _to_card(
     tender: Tender,
     entry: BoardEntry | None,
     historical_awards: list[Award],
     profile: CompanyProfile | None = None,
     changed_in_last_sync: bool = False,
+    cached_items: list[dict] | None = None,
 ) -> BoardCard:
     amt = tender.estimated_amount or 0.0
     red_flags = evaluate_all_red_flags(
@@ -103,7 +151,12 @@ def _to_card(
         chunk_texts=[],
     )
     win_chance = estimate_win_chance(tender, historical_awards)
-    eligibility_summary, questionable_reasons = board_eligibility(tender, profile)
+    if cached_items:
+        eligibility_summary, questionable_reasons = _cached_eligibility(
+            cached_items, tender
+        )
+    else:
+        eligibility_summary, questionable_reasons = None, []
 
     return BoardCard(
         tender_id=str(tender.id),
@@ -155,6 +208,7 @@ async def _semantic_board(
             scored.append((similarity, tender))
 
     scored.sort(key=lambda item: item[0], reverse=True)
+    scored = scored[:12]
 
     cards: list[BoardCard] = []
     for _similarity, tender in scored:
@@ -222,6 +276,20 @@ async def get_board(
     changes_res = await db.execute(select(TenderChange.tender_id))
     changed_ids = set(changes_res.scalars().all())
 
+    # 6. Cached DeepSeek eligibility for this profile (board stays LLM-free)
+    eligibility_by_tender: dict[str, list[dict]] = {}
+    if profile is not None:
+        cache_res = await db.execute(
+            select(LLMCache).where(
+                LLMCache.prompt_version
+                == f"{ELIGIBILITY_VERSION}_p{profile.id}"
+            )
+        )
+        for row in cache_res.scalars().all():
+            result = row.result
+            if isinstance(result, dict) and isinstance(result.get("items"), list):
+                eligibility_by_tender[row.tender_ocds_id] = result["items"]
+
     cards: list[BoardCard] = []
 
     for t in tenders:
@@ -232,6 +300,7 @@ async def get_board(
             historical,
             profile=profile,
             changed_in_last_sync=t.id in changed_ids,
+            cached_items=eligibility_by_tender.get(t.ocds_id),
         )
 
         if price_min is not None or price_max is not None:
