@@ -20,8 +20,17 @@ class CompanyProfile(Base):
     description: Mapped[str] = mapped_column(Text)
     cpv_codes: Mapped[Any] = mapped_column(JSONB, nullable=True)  # list[str]
     regions: Mapped[Any] = mapped_column(JSONB, nullable=True)  # list[str]
-    budget_min: Mapped[float | None] = mapped_column(Float)
-    budget_max: Mapped[float | None] = mapped_column(Float)
+    budget_min: Mapped[float | None] = mapped_column(Float, nullable=True)
+    budget_max: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    # Extended profile attributes for eligibility matching
+    annual_turnover: Mapped[Any] = mapped_column(
+        JSONB, nullable=True
+    )  # {amount, currency}
+    employee_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    licenses: Mapped[Any] = mapped_column(JSONB, nullable=True)  # list[str]
+    certifications: Mapped[Any] = mapped_column(JSONB, nullable=True)  # list[str]
+
     # Populated after embedding the description field
     embedding: Mapped[Any] = mapped_column(Vector(EMBEDDING_DIM), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
