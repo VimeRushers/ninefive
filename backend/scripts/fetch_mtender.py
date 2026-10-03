@@ -41,6 +41,9 @@ from app.services.change_tracking import build_changes, verdict_for
 
 BASE_URL = "https://public.mtender.gov.md"
 PAGE_SIZE = 100
+
+# ocds_ids already processed in this run (a tender is handled twice: compiled + CN)
+_SEEN_THIS_RUN: set[str] = set()
 # Per-request timeout in seconds
 TIMEOUT = 30.0
 
@@ -196,14 +199,17 @@ async def _upsert_buyer(
     return res.scalar_one()
 
 
-async def _upsert_tender(session: AsyncSession, ocds_id: str) -> Tender:
+async def _upsert_tender(
+    session: AsyncSession, ocds_id: str
+) -> tuple[Tender, bool]:
     res = await session.execute(select(Tender).where(Tender.ocds_id == ocds_id))
     tender = res.scalar_one_or_none()
     if tender is None:
         tender = Tender(ocds_id=ocds_id)
         session.add(tender)
         await session.flush()
-    return tender
+        return tender, True
+    return tender, False
 
 
 async def _upsert_award(
@@ -359,7 +365,9 @@ async def process_ocid(
                 )
 
         # ---- Upsert Tender ----
-        tender = await _upsert_tender(session, ocid)
+        first_this_run = ocid not in _SEEN_THIS_RUN
+        _SEEN_THIS_RUN.add(ocid)
+        tender, created = await _upsert_tender(session, ocid)
         previous = (
             {
                 "deadline": tender.submission_deadline,
@@ -367,7 +375,7 @@ async def process_ocid(
                 "status": tender.status,
                 "title": tender.title,
             }
-            if tender.id is not None
+            if (first_this_run and not created)
             else None
         )
         tender.title = title or tender.title
