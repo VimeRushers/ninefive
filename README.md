@@ -12,9 +12,12 @@ docker compose up -d db           # start Postgres + pgvector
 cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-alembic upgrade head              # run DB migrations
+alembic upgrade head              # create schema (or: python -m scripts.init_db)
 uvicorn app.main:app --reload     # → http://localhost:8000/docs
 ```
+
+> Schema changes after a database already exists need a new Alembic migration or a
+> fresh volume (`docker compose down -v`). `create_all` never alters existing tables.
 
 ## Quick start — full Docker (backend and database)
 

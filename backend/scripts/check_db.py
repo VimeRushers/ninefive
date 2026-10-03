@@ -31,6 +31,10 @@ EXPECTED_TABLES = [
     "documents",
     "chunks",
     "llm_cache",
+    "pricelists",
+    "catalogue_items",
+    "board_entries",
+    "tender_changes",
 ]
 
 

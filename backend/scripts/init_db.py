@@ -5,13 +5,16 @@ Usage (from backend/):
     python -m scripts.init_db
 
 What it does:
-  1. Enables the pgvector extension (CREATE EXTENSION IF NOT EXISTS vector).
+   1. Enables the pgvector extension (CREATE EXTENSION IF NOT EXISTS vector).
   2. Calls Base.metadata.create_all — creates every table that doesn't exist yet.
      This is idempotent: safe to run multiple times, won't drop existing data.
 
-For production use Alembic migrations instead:
-    alembic revision --autogenerate -m "initial schema"
+Prefer Alembic migrations for anything beyond a fresh database:
     alembic upgrade head
+
+Note: create_all only creates missing tables. It will NOT add a new column to a
+table that already exists. If the schema changed, either start from a fresh DB
+volume or write an Alembic migration (then `alembic stamp head` on existing DBs).
 """
 
 import asyncio
