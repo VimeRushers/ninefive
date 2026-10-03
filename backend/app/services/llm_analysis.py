@@ -62,6 +62,7 @@ async def complete_json(
                     {"role": "user", "content": user},
                 ],
                 response_format={"type": "json_object"},
+                reasoning_effort=settings.deepseek_reasoning_effort,
                 timeout=settings.deepseek_timeout_seconds,
             )
             raw = response.choices[0].message.content or "{}"

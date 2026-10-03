@@ -9,8 +9,9 @@ class Settings(BaseSettings):
     # DeepSeek (OpenAI-compatible)
     deepseek_api_key: str = ""
     deepseek_base_url: str = "https://api.deepseek.com"
-    deepseek_model: str = "deepseek-chat"
-    deepseek_timeout_seconds: float = 20.0
+    deepseek_model: str = "deepseek-flash"
+    deepseek_reasoning_effort: str = "low"
+    deepseek_timeout_seconds: float = 60.0
 
     embed_model: str = "intfloat/multilingual-e5-large"
     embed_allow_fallback: bool = True

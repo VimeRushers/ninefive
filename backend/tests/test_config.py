@@ -18,7 +18,8 @@ def clean_env(monkeypatch):
 def test_new_setting_defaults(clean_env):
     settings = Settings(_env_file=None)
     assert settings.pricelists_dir == "data/pricelists"
-    assert settings.deepseek_timeout_seconds == 20.0
+    assert settings.deepseek_timeout_seconds == 60.0
+    assert settings.deepseek_reasoning_effort == "low"
     assert settings.embed_allow_fallback is True
 
 
