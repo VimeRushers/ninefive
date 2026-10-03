@@ -134,3 +134,19 @@ Tender notices and attached documents take time to read. ninefive aims to bring 
 - Let buyers sort submitted offers by their evaluation criteria.
 
 Public procurement data comes from Moldova's MTender system. Findings should link back to source records or documents.
+
+## Backend runbook
+
+```bash
+# from backend/
+alembic upgrade head              # create/upgrade schema
+python -m scripts.ingest          # sample tenders + demo profile & catalogue
+python -m scripts.fetch_mtender   # live OCDS ingest (optional)
+python -m scripts.fetch_docs      # download + extract documents
+python -m scripts.embed_chunks    # chunk + tender embeddings
+python -m scripts.precompute      # warm DeepSeek caches (needs DEEPSEEK_API_KEY)
+pytest -q                         # backend test suite
+```
+
+Secrets live in `.env` (repo root, for docker-compose) and `backend/.env` (for a
+local `uvicorn` run). Both are gitignored. Copy from `.env.example`.
