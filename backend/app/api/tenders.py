@@ -25,6 +25,7 @@ from app.models.document import Document
 from app.models.profile import CompanyProfile
 from app.models.pricelist import Pricelist
 from app.models.tender import Tender
+from app.models.tender_change import TenderChange as TenderChangeRecord
 from app.schemas import (
     Citation,
     CitedText,
@@ -35,6 +36,7 @@ from app.schemas import (
     Participant,
     ProductMatch,
     TenderAnalysis,
+    TenderChange as TenderChangeOut,
     TenderDetail,
     TenderDocument,
 )
@@ -466,6 +468,30 @@ async def get_tender_detail(
         for d in (tender.documents or [])
     ]
 
+    change_rows = (
+        await db.execute(
+            select(TenderChangeRecord)
+            .where(TenderChangeRecord.tender_id == tender.id)
+            .order_by(TenderChangeRecord.synced_at.desc())
+        )
+    ).scalars().all()
+    changes = [
+        TenderChangeOut(
+            synced_at=row.synced_at,
+            changes=list(row.changes or []),
+            verdict=row.verdict,
+            reason=CitedText(
+                text=(row.reason or {}).get("text", "")
+                if isinstance(row.reason, dict)
+                else "",
+                citations=[],
+            ),
+            stage_before=row.stage_before or "new",
+            stage_after=row.stage_after or "new",
+        )
+        for row in change_rows
+    ]
+
     product_matches: list[ProductMatch] = []
     if profile_id is not None:
         detail_profile = (
@@ -521,7 +547,7 @@ async def get_tender_detail(
         tags=tags_for_cpv(tender.cpv_codes),
         documents=docs,
         product_matches=product_matches,
-        changes=[],
+        changes=changes,
     )
 
 

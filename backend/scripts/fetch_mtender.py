@@ -26,14 +26,18 @@ import app.models  # noqa: F401 — registers all ORM classes with Base.metadata
 import httpx
 from app.core.database import AsyncSessionLocal
 from app.models.award import Award
+from app.models.board import BoardEntry
 from app.models.bid import BidStatistic
 from app.models.buyer import Buyer
 from app.models.document import Document
 from app.models.tender import Tender
+from app.models.tender_change import TenderChange
 from app.models.tender_item import TenderItem
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.services.change_tracking import build_changes, verdict_for
 
 BASE_URL = "https://public.mtender.gov.md"
 PAGE_SIZE = 100
@@ -213,6 +217,21 @@ async def _upsert_award(
         session.add(Award(ocds_id=ocds_id, tender_id=tender_id, **kwargs))
 
 
+async def _auto_stage(session: AsyncSession, tender: Tender) -> None:
+    target = (
+        "not_interested" if verdict_for(tender.status) == "irrelevant" else "questionable"
+    )
+    res = await session.execute(
+        select(BoardEntry).where(BoardEntry.tender_id == tender.id)
+    )
+    for entry in res.scalars().all():
+        if entry.stage_source == "manual":
+            continue
+        entry.stage = target
+        entry.stage_source = "auto"
+        entry.stage_reason = "Actualizare detectată la resincronizare"
+
+
 async def _upsert_tender_item(
     session: AsyncSession,
     tender_id: int,
@@ -341,6 +360,16 @@ async def process_ocid(
 
         # ---- Upsert Tender ----
         tender = await _upsert_tender(session, ocid)
+        previous = (
+            {
+                "deadline": tender.submission_deadline,
+                "estimated_amount": tender.estimated_amount,
+                "status": tender.status,
+                "title": tender.title,
+            }
+            if tender.id is not None
+            else None
+        )
         tender.title = title or tender.title
         tender.description = description or tender.description
         tender.buyer_id = buyer_id_db or tender.buyer_id
@@ -360,6 +389,26 @@ async def process_ocid(
         tender.ocds_packages = packages or tender.ocds_packages
 
         await session.flush()
+
+        if previous is not None:
+            current = {
+                "deadline": tender.submission_deadline,
+                "estimated_amount": tender.estimated_amount,
+                "status": tender.status,
+                "title": tender.title,
+            }
+            detected = build_changes(previous, current)
+            if detected:
+                session.add(
+                    TenderChange(
+                        tender_id=tender.id,
+                        synced_at=datetime.now(timezone.utc),
+                        changes=detected,
+                        verdict=verdict_for(tender.status),
+                        reason={"text": "; ".join(detected), "citations": []},
+                    )
+                )
+                await _auto_stage(session, tender)
 
         # ---- Awards ----
         # Build a supplier lookup from all parties
