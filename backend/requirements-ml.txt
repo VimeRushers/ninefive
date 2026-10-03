@@ -1,0 +1,8 @@
+# ML / document processing — install only on machines that need it
+# WARNING: sentence-transformers pulls PyTorch (~1.5 GB)
+-r requirements.txt
+sentence-transformers>=3.0.0  # feat/search — multilingual embeddings
+pymupdf>=1.24.0               # feat/ingestion — digital PDF parsing
+pdfplumber>=0.11.0            # feat/ingestion — alternative PDF parser
+pytesseract>=0.3.10           # feat/ingestion — OCR for scanned PDFs
+Pillow>=10.0.0                # feat/ingestion — image handling for OCR
