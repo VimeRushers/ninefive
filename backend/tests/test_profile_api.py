@@ -9,11 +9,16 @@ from fastapi.testclient import TestClient
 
 
 def test_lookup_company(client: TestClient):
-    res = client.get("/profile/lookup?idno=1003600012345")
+    res = client.get("/profile/lookup?idno=1009600012346")
     assert res.status_code == 200
     data = res.json()
-    assert data["idno"] == "1003600012345"
-    assert "name" in data
+    assert data["idno"] == "1009600012346"
+    assert data["name"] == "TehnoServ Grup SRL"
+
+
+def test_lookup_unknown_company_returns_404(client: TestClient):
+    res = client.get("/profile/lookup?idno=1003600012345")
+    assert res.status_code == 404
 
 
 def test_create_profile_with_mock_db():

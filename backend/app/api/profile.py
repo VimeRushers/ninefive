@@ -14,6 +14,7 @@ from app.models.profile import CompanyProfile
 from app.schemas import CatalogueItem as CatalogueItemSchema
 from app.schemas import CatalogueItemUpdate, CompanyLookup, Pricelist as PricelistSchema
 from app.schemas import ProfileCreate, ProfileOut, ProfileUpdate
+from app.services.company_registry import find_company
 from app.services.pricelist_parser import parse_pricelist
 
 router = APIRouter()
@@ -33,16 +34,10 @@ async def _get_profile_or_404(db: AsyncSession, profile_id: int) -> CompanyProfi
 async def lookup_company(
     idno: str = Query(..., min_length=13, max_length=13),
 ) -> CompanyLookup:
-    return CompanyLookup(
-        idno=idno,
-        name="Companie Exemplu SRL",
-        legal_form="SRL",
-        address="str. Ștefan cel Mare 1, Chișinău",
-        region="Chișinău",
-        registered_at="2018-05-15",
-        activities=["Lucrări de construcții", "Comerț cu ridicata"],
-        source="data2b.md",
-    )
+    company = find_company(idno)
+    if company is None:
+        raise HTTPException(status_code=404, detail="Company not found")
+    return CompanyLookup(**company)
 
 
 @router.post("", response_model=ProfileOut, status_code=201)
