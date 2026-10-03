@@ -61,10 +61,15 @@ def test_get_board_endpoint():
 
     async def override_get_db():
         session = MagicMock()
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = [t1]
-        mock_result.scalar_one_or_none.return_value = None
-        session.execute = AsyncMock(return_value=mock_result)
+        profile_result = MagicMock()
+        profile_result.scalar_one_or_none.return_value = None
+        tenders_result = MagicMock()
+        tenders_result.scalars.return_value.all.return_value = [t1]
+        entries_result = MagicMock()
+        entries_result.scalars.return_value.all.return_value = []
+        session.execute = AsyncMock(
+            side_effect=[profile_result, tenders_result, entries_result]
+        )
         yield session
 
     app.dependency_overrides[get_db] = override_get_db
@@ -94,9 +99,14 @@ def test_move_card_endpoint():
 
     async def override_get_db():
         session = MagicMock()
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = t1
-        session.execute = AsyncMock(return_value=mock_result)
+        tender_result = MagicMock()
+        tender_result.scalar_one_or_none.return_value = t1
+        entry_result = MagicMock()
+        entry_result.scalar_one_or_none.return_value = None
+        session.execute = AsyncMock(side_effect=[tender_result, entry_result])
+        session.add = MagicMock()
+        session.commit = AsyncMock()
+        session.refresh = AsyncMock()
         yield session
 
     app.dependency_overrides[get_db] = override_get_db

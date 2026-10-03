@@ -15,6 +15,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.models.award import Award
+from app.models.board import BoardEntry
 from app.models.profile import CompanyProfile
 from app.models.tender import Tender
 from app.schemas import (
@@ -27,6 +28,34 @@ from app.schemas import (
 )
 
 router = APIRouter()
+
+
+def _to_card(tender: Tender, entry: BoardEntry | None) -> BoardCard:
+    amt = tender.estimated_amount or 0.0
+    return BoardCard(
+        tender_id=str(tender.id),
+        title=tender.title or "Achiziție publică",
+        mtender_url=f"https://mtender.gov.md/tenders/{tender.ocds_id}",
+        buyer_id=str(tender.buyer_id or tender.buyer_ocds_id or ""),
+        buyer_name=tender.buyer_name or "Autoritate contractantă",
+        estimated_value=MoneyAmount(amount=amt, currency=tender.currency or "MDL"),
+        region=tender.region,
+        published_at=tender.published_at
+        or tender.created_at
+        or datetime.now(timezone.utc),
+        modified_at=tender.updated_at,
+        tender_start_at=tender.published_at,
+        deadline=tender.submission_deadline,
+        stage=entry.stage if entry else "new",
+        stage_source=entry.stage_source if entry else "auto",
+        stage_reason=entry.stage_reason if entry else None,
+        questionable_reasons=[],
+        eligibility=EligibilitySummary(met_count=3, total_count=3, unknown_count=0),
+        win_probability=0.45,
+        tags=["IT", "Hardware"] if "30" in str(tender.cpv_codes) else ["Achiziții"],
+        red_flag_count=0,
+        changed_in_last_sync=False,
+    )
 
 
 @router.get("", response_model=BoardResponse)
@@ -53,6 +82,12 @@ async def get_board(
     res = await db.execute(stmt)
     tenders = list(res.scalars().all())
 
+    # 3. Persisted stages for this profile (absent entry = default "new"/"auto")
+    entries_res = await db.execute(
+        select(BoardEntry).where(BoardEntry.profile_id == profile_id)
+    )
+    entries = {e.tender_id: e for e in entries_res.scalars().all()}
+
     cards: list[BoardCard] = []
 
     for t in tenders:
@@ -72,38 +107,10 @@ async def get_board(
             if not all(word in haystack for word in q_lower.split()):
                 continue
 
-        card_stage: Stage = "new"
-        if stages and card_stage not in stages:
+        card = _to_card(t, entries.get(t.id))
+        if stages and card.stage not in stages:
             continue
-
-        cards.append(
-            BoardCard(
-                tender_id=str(t.id),
-                title=t.title or "Achiziție publică",
-                mtender_url=f"https://mtender.gov.md/tenders/{t.ocds_id}",
-                buyer_id=str(t.buyer_id or t.buyer_ocds_id or ""),
-                buyer_name=t.buyer_name or "Autoritate contractantă",
-                estimated_value=MoneyAmount(amount=amt, currency=t.currency or "MDL"),
-                region=t.region,
-                published_at=t.published_at
-                or t.created_at
-                or datetime.now(timezone.utc),
-                modified_at=t.updated_at,
-                tender_start_at=t.published_at,
-                deadline=t.submission_deadline,
-                stage=card_stage,
-                stage_source="auto",
-                stage_reason=None,
-                questionable_reasons=[],
-                eligibility=EligibilitySummary(
-                    met_count=3, total_count=3, unknown_count=0
-                ),
-                win_probability=0.45,
-                tags=["IT", "Hardware"] if "30" in str(t.cpv_codes) else ["Achiziții"],
-                red_flag_count=0,
-                changed_in_last_sync=False,
-            )
-        )
+        cards.append(card)
 
     return BoardResponse(
         profile_id=profile_id,
@@ -128,28 +135,20 @@ async def move_card(
     if not tender:
         raise HTTPException(status_code=404, detail="Tender not found")
 
-    amt = tender.estimated_amount or 0.0
-    return BoardCard(
-        tender_id=str(tender.id),
-        title=tender.title or "Achiziție publică",
-        mtender_url=f"https://mtender.gov.md/tenders/{tender.ocds_id}",
-        buyer_id=str(tender.buyer_id or tender.buyer_ocds_id or ""),
-        buyer_name=tender.buyer_name or "Autoritate contractantă",
-        estimated_value=MoneyAmount(amount=amt, currency=tender.currency or "MDL"),
-        region=tender.region,
-        published_at=tender.published_at
-        or tender.created_at
-        or datetime.now(timezone.utc),
-        modified_at=tender.updated_at,
-        tender_start_at=tender.published_at,
-        deadline=tender.submission_deadline,
-        stage=payload.stage,
-        stage_source="manual",
-        stage_reason=None,
-        questionable_reasons=[],
-        eligibility=EligibilitySummary(met_count=3, total_count=3, unknown_count=0),
-        win_probability=0.45,
-        tags=["IT", "Hardware"] if "30" in str(tender.cpv_codes) else ["Achiziții"],
-        red_flag_count=0,
-        changed_in_last_sync=False,
+    entry_res = await db.execute(
+        select(BoardEntry).where(
+            BoardEntry.profile_id == profile_id, BoardEntry.tender_id == tender.id
+        )
     )
+    entry = entry_res.scalar_one_or_none()
+    if entry is None:
+        entry = BoardEntry(profile_id=profile_id, tender_id=tender.id)
+        db.add(entry)
+
+    entry.stage = payload.stage
+    entry.stage_source = "manual"
+    entry.stage_reason = None
+    await db.commit()
+    await db.refresh(entry)
+
+    return _to_card(tender, entry)
