@@ -32,4 +32,4 @@ coverage.xml
 
 # Local data / model weights
 data/raw/
-models/
+model-weights/
