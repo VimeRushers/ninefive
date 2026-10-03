@@ -1,0 +1,114 @@
+{
+  "title": "Licitații",
+  "cardCount_one": "{{count}} licitație",
+  "cardCount_few": "{{count}} licitații",
+  "cardCount_other": "{{count}} de licitații",
+  "description": "Licitațiile potrivite profilului vostru, pe etape.",
+  "stats": {
+    "total": "Valoare totală: {{value}}"
+  },
+  "column": {
+    "empty": "Nicio licitație"
+  },
+  "card": {
+    "value": "Valoare",
+    "deadline": "Termen",
+    "eligibility": "Eligibilitate",
+    "winChance": "Șanse",
+    "updated": "Actualizat",
+    "signals_one": "{{count}} semnal",
+    "signals_few": "{{count}} semnale",
+    "signals_other": "{{count}} de semnale"
+  },
+  "scrollLeft": "Derulează la stânga",
+  "scrollRight": "Derulează la dreapta",
+  "search": {
+    "label": "Caută licitații",
+    "placeholder": "Caută după titlu, cumpărător, etichetă sau regiune",
+    "clear": "Șterge căutarea",
+    "shortcut": "Apăsați / pentru a căuta",
+    "noResults": "Nicio licitație pentru „{{query}}”",
+    "noResultsHint": "Încercați alte cuvinte, în română sau în rusă.",
+    "results_one": "{{count}} rezultat",
+    "results_few": "{{count}} rezultate",
+    "results_other": "{{count}} de rezultate"
+  },
+  "view": {
+    "label": "Mod de afișare",
+    "board": "Panou",
+    "list": "Listă"
+  },
+  "list": {
+    "tender": "Licitație",
+    "stage": "Etapă",
+    "signals": "Semnale",
+    "actions": "Acțiuni"
+  },
+  "filters": {
+    "label": "Filtre",
+    "published": "Data publicării",
+    "modified": "Data modificării",
+    "start": "Începerea licitației",
+    "price": "Preț",
+    "region": "Locație",
+    "tags": "Etichete",
+    "from": "De la",
+    "to": "Până la",
+    "since": "din {{date}}",
+    "until": "până la {{date}}",
+    "priceMin": "Minim, MDL",
+    "priceMax": "Maxim, MDL",
+    "atLeast": "peste {{value}}",
+    "atMost": "până la {{value}}",
+    "apply": "Aplică",
+    "allRegions": "Toate regiunile",
+    "clearOne": "Elimină filtrul „{{label}}”",
+    "reset": "Resetează filtrele",
+    "noResults": "Nicio licitație pentru filtrele alese",
+    "noResultsHint": "Schimbați sau resetați filtrele.",
+    "stage": "Etapă",
+    "winChance": "Șanse de câștig",
+    "eligibility": "Eligibilitate",
+    "minPercent": "Minim, %",
+    "maxPercent": "Maxim, %",
+    "winNote": "Licitațiile fără estimare sunt ascunse cât timp filtrul e activ.",
+    "eligibilityNote": "Licitațiile care nu au putut fi verificate sunt ascunse cât timp filtrul e activ."
+  },
+  "menu": {
+    "label": "Acțiuni pentru „{{title}}”",
+    "open": "Deschide licitația",
+    "openMtender": "Deschide în MTender",
+    "moveTo": "Mută în"
+  },
+  "drag": {
+    "handle": "Mută „{{title}}”",
+    "roleDescription": "card mutabil",
+    "instructions": "Apăsați Spațiu sau Enter ca să ridicați cardul. Cu săgețile stânga și dreapta îl mutați între coloane. Apăsați Spațiu sau Enter ca să-l lăsați, sau Escape ca să anulați.",
+    "picked": "Ați ridicat „{{title}}” din coloana „{{stage}}”.",
+    "over": "Deasupra coloanei „{{stage}}”.",
+    "outside": "Cardul nu e deasupra unei coloane.",
+    "dropped": "Ați mutat licitația „{{title}}” în „{{stage}}”.",
+    "stayed": "Licitația „{{title}}” rămâne în „{{stage}}”.",
+    "cancelled": "Ați anulat mutarea. Licitația „{{title}}” rămâne în „{{stage}}”."
+  },
+  "reasons": {
+    "unmet": "Cerință neîndeplinită",
+    "required": "Se cere",
+    "ours": "Aveți",
+    "notInProfile": "Nu e în profil",
+    "grayZone": "Nu e clar dacă aveți ce se cere",
+    "closest": "Cel mai apropiat din catalog",
+    "noClosest": "Nimic asemănător în catalog",
+    "match": "Potrivire {{value}}",
+    "haveIt": "Avem",
+    "dontHave": "Nu avem",
+    "more_one": "Încă {{count}} motiv",
+    "more_few": "Încă {{count}} motive",
+    "more_other": "Încă {{count}} de motive",
+    "less": "Arată mai puțin"
+  },
+  "move": {
+    "error": "Nu am putut muta licitația. Verificați conexiunea și încercați din nou.",
+    "dismiss": "Închide mesajul"
+  }
+}

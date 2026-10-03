@@ -1,0 +1,118 @@
+{
+  "title": "Тендеры",
+  "cardCount_one": "{{count}} тендер",
+  "cardCount_few": "{{count}} тендера",
+  "cardCount_many": "{{count}} тендеров",
+  "cardCount_other": "{{count}} тендера",
+  "description": "Тендеры, подходящие вашему профилю, по этапам.",
+  "stats": {
+    "total": "Общая сумма: {{value}}"
+  },
+  "column": {
+    "empty": "Нет тендеров"
+  },
+  "card": {
+    "value": "Сумма",
+    "deadline": "Срок",
+    "eligibility": "Соответствие",
+    "winChance": "Шансы",
+    "updated": "Обновлён",
+    "signals_one": "{{count}} сигнал",
+    "signals_few": "{{count}} сигнала",
+    "signals_many": "{{count}} сигналов",
+    "signals_other": "{{count}} сигнала"
+  },
+  "scrollLeft": "Прокрутить влево",
+  "scrollRight": "Прокрутить вправо",
+  "search": {
+    "label": "Поиск тендеров",
+    "placeholder": "Поиск по названию, заказчику, метке или региону",
+    "clear": "Очистить поиск",
+    "shortcut": "Нажмите /, чтобы искать",
+    "noResults": "Нет тендеров по запросу «{{query}}»",
+    "noResultsHint": "Попробуйте другие слова, на румынском или русском.",
+    "results_one": "{{count}} результат",
+    "results_few": "{{count}} результата",
+    "results_many": "{{count}} результатов",
+    "results_other": "{{count}} результата"
+  },
+  "view": {
+    "label": "Вид",
+    "board": "Доска",
+    "list": "Список"
+  },
+  "list": {
+    "tender": "Тендер",
+    "stage": "Этап",
+    "signals": "Сигналы",
+    "actions": "Действия"
+  },
+  "filters": {
+    "label": "Фильтры",
+    "published": "Дата публикации",
+    "modified": "Дата изменения",
+    "start": "Начало тендера",
+    "price": "Цена",
+    "region": "Регион",
+    "tags": "Метки",
+    "from": "С",
+    "to": "По",
+    "since": "с {{date}}",
+    "until": "по {{date}}",
+    "priceMin": "Минимум, MDL",
+    "priceMax": "Максимум, MDL",
+    "atLeast": "от {{value}}",
+    "atMost": "до {{value}}",
+    "apply": "Применить",
+    "allRegions": "Все регионы",
+    "clearOne": "Убрать фильтр «{{label}}»",
+    "reset": "Сбросить фильтры",
+    "noResults": "Нет тендеров по выбранным фильтрам",
+    "noResultsHint": "Измените или сбросьте фильтры.",
+    "stage": "Этап",
+    "winChance": "Шанс на победу",
+    "eligibility": "Соответствие",
+    "minPercent": "Минимум, %",
+    "maxPercent": "Максимум, %",
+    "winNote": "Тендеры без оценки скрыты, пока фильтр включён.",
+    "eligibilityNote": "Тендеры, которые не удалось проверить, скрыты, пока фильтр включён."
+  },
+  "menu": {
+    "label": "Действия с тендером «{{title}}»",
+    "open": "Открыть тендер",
+    "openMtender": "Открыть в MTender",
+    "moveTo": "Переместить в"
+  },
+  "drag": {
+    "handle": "Переместить «{{title}}»",
+    "roleDescription": "перетаскиваемая карточка",
+    "instructions": "Нажмите пробел или Enter, чтобы взять карточку. Стрелками влево и вправо переносите её между колонками. Нажмите пробел или Enter, чтобы опустить её, или Escape, чтобы отменить.",
+    "picked": "Карточка «{{title}}» взята из колонки «{{stage}}».",
+    "over": "Над колонкой «{{stage}}».",
+    "outside": "Карточка не над колонкой.",
+    "dropped": "Тендер «{{title}}» перемещён в «{{stage}}».",
+    "stayed": "Тендер «{{title}}» остался в «{{stage}}».",
+    "cancelled": "Перемещение отменено. Тендер «{{title}}» остался в «{{stage}}»."
+  },
+  "reasons": {
+    "unmet": "Требование не выполнено",
+    "required": "Требуется",
+    "ours": "У вас",
+    "notInProfile": "Нет в профиле",
+    "grayZone": "Неясно, есть ли у вас то, что требуется",
+    "closest": "Ближайшее в каталоге",
+    "noClosest": "В каталоге нет ничего похожего",
+    "match": "Совпадение {{value}}",
+    "haveIt": "У нас есть",
+    "dontHave": "У нас нет",
+    "more_one": "Ещё {{count}} причина",
+    "more_few": "Ещё {{count}} причины",
+    "more_many": "Ещё {{count}} причин",
+    "more_other": "Ещё {{count}} причины",
+    "less": "Свернуть"
+  },
+  "move": {
+    "error": "Не удалось переместить тендер. Проверьте подключение и попробуйте снова.",
+    "dismiss": "Закрыть сообщение"
+  }
+}
