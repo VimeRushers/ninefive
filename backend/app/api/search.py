@@ -14,6 +14,7 @@ from app.models.chunk import Chunk
 from app.models.profile import CompanyProfile
 from app.models.tender import Tender
 from app.schemas import MoneyAmount, SearchResponse, SearchResult
+from app.services.red_flags import evaluate_all_red_flags
 
 router = APIRouter()
 
@@ -78,6 +79,7 @@ async def search_tenders(
                     Chunk.embedding.isnot(None),
                 )
                 .order_by(Chunk.tender_id, chunk_distance)
+                .limit(200)
             )
         ).all()
         for tender_id, text, _dist in chunk_rows:
@@ -108,7 +110,13 @@ async def search_tenders(
                 deadline=tender.submission_deadline,
                 fit_score=_fit_score(dist, boost),
                 match_snippet=snippet[:300],
-                red_flag_count=0,
+                red_flag_count=sum(
+                    1
+                    for flag in evaluate_all_red_flags(
+                        tender=tender, buyer=None, historical_awards=[]
+                    )
+                    if flag.triggered
+                ),
             )
         )
 

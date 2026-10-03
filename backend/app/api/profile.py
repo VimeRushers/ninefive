@@ -160,7 +160,14 @@ async def upload_pricelist(
 
     # Parsing runs inline: pricelists are small and the frontend polls until
     # the status is no longer "processing". Move to a worker queue at scale.
-    items = parse_pricelist(dest)
+    try:
+        items = parse_pricelist(dest)
+    except Exception:
+        pricelist.status = "failed"
+        await db.commit()
+        await db.refresh(pricelist)
+        return PricelistSchema.model_validate(pricelist)
+
     for item in items:
         db.add(
             CatalogueItem(
