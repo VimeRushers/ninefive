@@ -48,6 +48,7 @@ from app.services.eligibility import (  # noqa: F401
     fallback_eligibility_items,
 )
 from app.services.llm_analysis import complete_json
+from app.services.redaction import redact
 from app.services.retrieval import relevant_chunk_refs
 from app.services.product_match import match_tender_items
 from app.services.red_flags import ChunkRef, evaluate_all_red_flags
@@ -101,7 +102,8 @@ async def _summarize_tender(
     tender: Tender, chunk_refs: list[ChunkRef], db: AsyncSession
 ) -> list[CitedText]:
     context = "\n\n".join(
-        f"[doc_id={r.document_id} page={r.page}] {r.text}" for r in chunk_refs[:10]
+        f"[doc_id={r.document_id} page={r.page}] {redact(r.text)}"
+        for r in chunk_refs[:10]
     )
     parsed = await complete_json(
         db,
@@ -195,7 +197,10 @@ def _build_competitors_prompt(
             f"bid={award.value or 'N/A'} {award.currency or ''}"
         )
         for ref in (participant_refs.get(participant_id) or [])[:5]:
-            lines.append(f"  [doc_id={ref.document_id} page={ref.page}] {ref.text[:500]}")
+            lines.append(
+                f"  [doc_id={ref.document_id} page={ref.page}] "
+                f"{redact(ref.text)[:500]}"
+            )
     lines.append("")
     lines.append(
         'Return JSON: {"participants": [{"participant_id": string, '
@@ -281,14 +286,16 @@ def _build_eligibility_prompt(
         or "(no documents)"
     )
     excerpts = "\n\n".join(
-        f"[doc_id={r.document_id} page={r.page}] {r.text}" for r in chunk_refs if r.text
+        f"[doc_id={r.document_id} page={r.page}] {redact(r.text)}"
+        for r in chunk_refs
+        if r.text
     )
     profile_block = (
         _profile_text(profile) if profile else "(no company profile provided)"
     )
     return (
         f"Tender title: {tender.title}\n"
-        f"Description: {tender.description or 'N/A'}\n"
+        f"Description: {redact(tender.description) or 'N/A'}\n"
         f"Estimated value: {tender.estimated_amount or 'N/A'} {tender.currency or ''}\n\n"
         f"Documents:\n{document_list}\n\n"
         f"Document excerpts:\n{excerpts or '(none)'}\n\n"
