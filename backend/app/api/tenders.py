@@ -18,6 +18,7 @@ from sqlalchemy.orm import selectinload
 from app.core.database import get_db
 from app.core.embedder import embed_texts
 from app.models.award import Award
+from app.models.board import BoardEntry
 from app.models.buyer import Buyer
 from app.models.catalogue import CatalogueItem
 from app.models.document import Document
@@ -33,13 +34,19 @@ from app.schemas import (
     EligibilityItem,
     MoneyAmount,
     Participant,
+    Stage,
+    StageSource,
     ProductMatch,
     TenderAnalysis,
     TenderChange as TenderChangeOut,
     TenderDetail,
     TenderDocument,
 )
-from app.services.eligibility import evaluate_items, fallback_eligibility_items
+from app.services.eligibility import (  # noqa: F401
+    ELIGIBILITY_VERSION,
+    evaluate_items,
+    fallback_eligibility_items,
+)
 from app.services.llm_analysis import complete_json
 from app.services.retrieval import relevant_chunk_refs
 from app.services.product_match import match_tender_items
@@ -49,7 +56,6 @@ from app.services.win_chance import estimate_win_chance
 
 router = APIRouter()
 
-ELIGIBILITY_VERSION = "eligibility_v4"
 SUMMARY_VERSION = "summary_v2"
 CPV_VERSION = "cpv_v1"
 COMPETITORS_VERSION = "competitors_v1"
@@ -368,6 +374,8 @@ async def _extract_eligibility_with_llm(
             _eligibility_item_from_llm(raw, documents_by_id)
             for raw in parsed.get("items", [])
             if isinstance(raw, dict)
+            and isinstance(raw.get("requirement"), str)
+            and raw["requirement"].strip()
         ]
 
     if not items:
@@ -542,6 +550,23 @@ async def get_tender_detail(
         for row in change_rows
     ]
 
+    stage: Stage = "new"
+    stage_source: StageSource = "auto"
+    stage_reason: str | None = None
+    if profile_id is not None:
+        board_entry = (
+            await db.execute(
+                select(BoardEntry).where(
+                    BoardEntry.profile_id == profile_id,
+                    BoardEntry.tender_id == tender.id,
+                )
+            )
+        ).scalar_one_or_none()
+        if board_entry is not None:
+            stage = board_entry.stage
+            stage_source = board_entry.stage_source
+            stage_reason = board_entry.stage_reason
+
     product_matches: list[ProductMatch] = []
     if profile_id is not None:
         detail_profile = (
@@ -591,8 +616,9 @@ async def get_tender_detail(
         or tender.created_at
         or datetime.now(timezone.utc),
         deadline=tender.submission_deadline,
-        stage="new",
-        stage_source="auto",
+        stage=stage,
+        stage_source=stage_source,
+        stage_reason=stage_reason,
         summary=await _summarize_tender(tender, _chunk_refs(tender), db),
         tags=tags_for_cpv(tender.cpv_codes),
         documents=docs,
