@@ -419,15 +419,6 @@ async def run(start_iso: str, limit: int, concurrency: int) -> None:
         concurrency,
     )
 
-
-async def run(start_iso: str, limit: int, concurrency: int) -> None:
-    log.info(
-        "Starting MTender ingest: start=%s limit=%d concurrency=%d",
-        start_iso,
-        limit,
-        concurrency,
-    )
-
     async with httpx.AsyncClient(follow_redirects=True) as client:
         offset = start_iso
         fetched = 0
