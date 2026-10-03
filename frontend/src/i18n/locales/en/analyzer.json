@@ -1,0 +1,67 @@
+{
+  "title": "Competitor analysis",
+  "status": {
+    "analyzing": {
+      "title": "Analyzing new or changed files",
+      "previous": "The results below are from the previous analysis on {{date}}.",
+      "first": "Results appear here when the analysis finishes."
+    },
+    "upToDate": {
+      "title": "Analyzed on {{date}}",
+      "since": "Participants' files haven't changed since.",
+      "titleNoDate": "Analysis is up to date",
+      "sinceLast": "Participants' files haven't changed since the last analysis."
+    }
+  },
+  "noDocuments": {
+    "title": "Participants' documents aren't published yet",
+    "description": "MTender publishes participants' bids only after bid opening, so there's nothing to analyze yet.",
+    "whenDeadline": "Bids are opened after the deadline, {{date}}. Once the documents are published, we analyze them automatically and the results appear here.",
+    "when": "Once the documents are published, we analyze them automatically and the results appear here."
+  },
+  "noParticipants": "We found no participants in the published documents.",
+  "kpi": {
+    "participants": "Participants",
+    "includingYou": "Including your bid",
+    "rejected": "Rejected or disqualified",
+    "rejectedHint": "Rejected: {{rejected}} · Disqualified: {{disqualified}}",
+    "winningPrice": "Winning price vs estimated value",
+    "winningPriceHint": "{{price}} of {{estimate}}",
+    "yourResult": "Your result",
+    "yourBid": "Your bid: {{percent}} of the estimated value"
+  },
+  "result": {
+    "winner": "Won",
+    "rejected": "Bid rejected",
+    "disqualified": "Disqualified",
+    "under_evaluation": "Under evaluation"
+  },
+  "participantStatus": {
+    "winner": "Winner",
+    "rejected": "Rejected",
+    "disqualified": "Disqualified",
+    "under_evaluation": "Under evaluation"
+  },
+  "participants": {
+    "title": "Participants"
+  },
+  "participant": {
+    "you": "You",
+    "idno": "IDNO {{idno}}",
+    "bidPrice": "Bid price",
+    "share": "{{percent}} of the estimated value",
+    "rejectedReason": "Why the bid was rejected",
+    "disqualifiedReason": "Why the bid was disqualified",
+    "strengths": "Strengths",
+    "weaknesses": "Weaknesses",
+    "nothingNoted": "Nothing noted in the documents.",
+    "documents": "Bid documents",
+    "noDocuments": "No documents published.",
+    "pages": "{{pages}} pp.",
+    "analyzing": "Analyzing",
+    "newTab": "(opens in a new tab)"
+  },
+  "lessons": {
+    "title": "What to do differently on similar tenders"
+  }
+}
