@@ -19,6 +19,7 @@ from app.models import (
     Pricelist,
     Tender,
     TenderChange,
+    TenderItem,
 )
 from sqlalchemy import inspect as sa_inspect
 
@@ -51,6 +52,7 @@ def test_all_models_registered_with_base():
         "catalogue_items",
         "board_entries",
         "tender_changes",
+        "tender_items",
     }
     assert expected.issubset(registered), f"Missing tables: {expected - registered}"
 
@@ -75,6 +77,7 @@ def test_all_models_registered_with_base():
         (CatalogueItem, "catalogue_items"),
         (BoardEntry, "board_entries"),
         (TenderChange, "tender_changes"),
+        (TenderItem, "tender_items"),
     ],
 )
 def test_table_name(model, expected_table):
@@ -229,6 +232,21 @@ def test_tender_has_embedding_column():
     assert "embedding" in column_names(Tender)
 
 
+def test_tender_item_columns():
+    cols = column_names(TenderItem)
+    required = {
+        "id",
+        "tender_id",
+        "description",
+        "cpv_code",
+        "quantity",
+        "unit",
+        "lot",
+        "created_at",
+    }
+    assert required.issubset(cols), f"Missing TenderItem columns: {required - cols}"
+
+
 def test_board_entry_columns():
     cols = column_names(BoardEntry)
     required = {
@@ -277,6 +295,11 @@ def test_buyer_has_tenders_relationship():
 def test_document_has_chunks_relationship():
     rels = {r.key for r in sa_inspect(Document).mapper.relationships}
     assert "chunks" in rels
+
+
+def test_tender_has_items_relationship():
+    rels = {r.key for r in sa_inspect(Tender).mapper.relationships}
+    assert "items" in rels
 
 
 def test_profile_has_pricelists_relationship():

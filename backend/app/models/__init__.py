@@ -14,6 +14,7 @@ from app.models.pricelist import Pricelist
 from app.models.profile import CompanyProfile
 from app.models.tender import Tender
 from app.models.tender_change import TenderChange
+from app.models.tender_item import TenderItem
 
 __all__ = [
     "Award",
@@ -28,4 +29,5 @@ __all__ = [
     "CompanyProfile",
     "Tender",
     "TenderChange",
+    "TenderItem",
 ]

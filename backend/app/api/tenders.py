@@ -19,9 +19,11 @@ from app.core.database import get_db
 from app.core.embedder import embed_texts
 from app.models.award import Award
 from app.models.buyer import Buyer
+from app.models.catalogue import CatalogueItem
 from app.models.chunk import Chunk
 from app.models.document import Document
 from app.models.profile import CompanyProfile
+from app.models.pricelist import Pricelist
 from app.models.tender import Tender
 from app.schemas import (
     Citation,
@@ -31,12 +33,14 @@ from app.schemas import (
     EligibilityItem,
     MoneyAmount,
     Participant,
+    ProductMatch,
     TenderAnalysis,
     TenderDetail,
     TenderDocument,
 )
 from app.services.eligibility import evaluate_items, fallback_eligibility_items
 from app.services.llm_analysis import complete_json
+from app.services.product_match import match_tender_items
 from app.services.red_flags import ChunkRef, evaluate_all_red_flags
 from app.services.tags import tags_for_cpv
 from app.services.win_chance import estimate_win_chance
@@ -441,6 +445,7 @@ async def get_tender_detail(
             selectinload(Tender.buyer),
             selectinload(Tender.documents),
             selectinload(Tender.chunks),
+            selectinload(Tender.items),
         )
     )
     res = await db.execute(stmt)
@@ -460,6 +465,35 @@ async def get_tender_detail(
         )
         for d in (tender.documents or [])
     ]
+
+    product_matches: list[ProductMatch] = []
+    if profile_id is not None:
+        detail_profile = (
+            await db.execute(
+                select(CompanyProfile).where(CompanyProfile.id == profile_id)
+            )
+        ).scalar_one_or_none()
+        if detail_profile is not None:
+            catalogue = list(
+                (
+                    await db.execute(
+                        select(CatalogueItem)
+                        .join(Pricelist, CatalogueItem.pricelist_id == Pricelist.id)
+                        .where(Pricelist.profile_id == detail_profile.id)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            product_matches = match_tender_items(
+                list(tender.items or []),
+                catalogue,
+                Citation(
+                    document_id=tender.ocds_id,
+                    document_title="Anunț de participare",
+                    url=f"https://mtender.gov.md/tenders/{tender.ocds_id}",
+                ),
+            )
 
     return TenderDetail(
         tender_id=str(tender.id),
@@ -486,7 +520,7 @@ async def get_tender_detail(
         summary=await _summarize_tender(tender, _chunk_refs(tender), db),
         tags=tags_for_cpv(tender.cpv_codes),
         documents=docs,
-        product_matches=[],
+        product_matches=product_matches,
         changes=[],
     )
 

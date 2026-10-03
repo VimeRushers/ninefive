@@ -35,6 +35,7 @@ EXPECTED_TABLES = [
     "catalogue_items",
     "board_entries",
     "tender_changes",
+    "tender_items",
 ]
 
 

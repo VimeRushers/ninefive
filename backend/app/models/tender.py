@@ -65,3 +65,6 @@ class Tender(Base):
         "Document", back_populates="tender"
     )  # type: ignore[name-defined]
     chunks: Mapped[list["Chunk"]] = relationship("Chunk", back_populates="tender")  # type: ignore[name-defined]
+    items: Mapped[list["TenderItem"]] = relationship(  # type: ignore[name-defined]
+        "TenderItem", back_populates="tender", cascade="all, delete-orphan"
+    )

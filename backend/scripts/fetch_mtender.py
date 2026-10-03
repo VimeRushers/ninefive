@@ -30,6 +30,7 @@ from app.models.bid import BidStatistic
 from app.models.buyer import Buyer
 from app.models.document import Document
 from app.models.tender import Tender
+from app.models.tender_item import TenderItem
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -210,6 +211,26 @@ async def _upsert_award(
     res = await session.execute(select(Award).where(Award.ocds_id == ocds_id))
     if res.scalar_one_or_none() is None:
         session.add(Award(ocds_id=ocds_id, tender_id=tender_id, **kwargs))
+
+
+async def _upsert_tender_item(
+    session: AsyncSession,
+    tender_id: int,
+    description: str,
+    **kwargs: Any,
+) -> None:
+    res = await session.execute(
+        select(TenderItem).where(
+            TenderItem.tender_id == tender_id,
+            TenderItem.description == description,
+        )
+    )
+    if res.scalar_one_or_none() is None:
+        session.add(
+            TenderItem(
+                tender_id=tender_id, description=description, **kwargs
+            )
+        )
 
 
 async def _upsert_document(
@@ -426,6 +447,21 @@ async def process_ocid(
                 document_type=pdoc["document_type"],
                 language=pdoc["language"],
                 participant_ocds_id=pdoc["participant_ocds_id"],
+            )
+
+        # ---- Tender line items ----
+        for row in cr_tender.get("items") or []:
+            description = (row.get("description") or "").strip()
+            if not description:
+                continue
+            await _upsert_tender_item(
+                session,
+                tender.id,
+                description,
+                cpv_code=(row.get("classification") or {}).get("id"),
+                quantity=row.get("quantity"),
+                unit=(row.get("unit") or {}).get("name"),
+                lot=row.get("relatedLot"),
             )
 
         # ---- Bid statistics ----
