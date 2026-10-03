@@ -301,9 +301,13 @@ async def move_card(
     profile_id: int = Query(1),
     db: AsyncSession = Depends(get_db),
 ) -> BoardCard:
-    stmt = select(Tender).where(
-        (Tender.ocds_id == tender_id)
-        | (Tender.id == int(tender_id) if tender_id.isdigit() else False)
+    stmt = (
+        select(Tender)
+        .where(
+            (Tender.ocds_id == tender_id)
+            | (Tender.id == int(tender_id) if tender_id.isdigit() else False)
+        )
+        .options(selectinload(Tender.documents))
     )
     res = await db.execute(stmt)
     tender = res.scalar_one_or_none()
