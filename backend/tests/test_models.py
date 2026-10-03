@@ -9,6 +9,7 @@ from app.core.database import Base
 from app.models import (
     Award,
     BidStatistic,
+    BoardEntry,
     Buyer,
     CatalogueItem,
     Chunk,
@@ -17,6 +18,7 @@ from app.models import (
     LLMCache,
     Pricelist,
     Tender,
+    TenderChange,
 )
 from sqlalchemy import inspect as sa_inspect
 
@@ -47,6 +49,8 @@ def test_all_models_registered_with_base():
         "llm_cache",
         "pricelists",
         "catalogue_items",
+        "board_entries",
+        "tender_changes",
     }
     assert expected.issubset(registered), f"Missing tables: {expected - registered}"
 
@@ -69,6 +73,8 @@ def test_all_models_registered_with_base():
         (LLMCache, "llm_cache"),
         (Pricelist, "pricelists"),
         (CatalogueItem, "catalogue_items"),
+        (BoardEntry, "board_entries"),
+        (TenderChange, "tender_changes"),
     ],
 )
 def test_table_name(model, expected_table):
@@ -166,6 +172,7 @@ def test_document_columns():
         "language",
         "local_path",
         "processed",
+        "participant_ocds_id",
         "created_at",
     }
     assert required.issubset(cols), f"Missing Document columns: {required - cols}"
@@ -218,6 +225,36 @@ def test_catalogue_item_columns():
     assert required.issubset(cols), f"Missing CatalogueItem columns: {required - cols}"
 
 
+def test_board_entry_columns():
+    cols = column_names(BoardEntry)
+    required = {
+        "id",
+        "profile_id",
+        "tender_id",
+        "stage",
+        "stage_source",
+        "stage_reason",
+        "updated_at",
+    }
+    assert required.issubset(cols), f"Missing BoardEntry columns: {required - cols}"
+
+
+def test_tender_change_columns():
+    cols = column_names(TenderChange)
+    required = {
+        "id",
+        "tender_id",
+        "synced_at",
+        "changes",
+        "verdict",
+        "reason",
+        "stage_before",
+        "stage_after",
+        "created_at",
+    }
+    assert required.issubset(cols), f"Missing TenderChange columns: {required - cols}"
+
+
 # ---------------------------------------------------------------------------
 # Relationships
 # ---------------------------------------------------------------------------
@@ -246,6 +283,17 @@ def test_profile_has_pricelists_relationship():
 def test_pricelist_cascade_deletes_items():
     rel = sa_inspect(Pricelist).mapper.relationships["items"]
     assert "delete-orphan" in rel.cascade
+
+
+# ---------------------------------------------------------------------------
+# BoardEntry unique constraint
+# ---------------------------------------------------------------------------
+
+
+def test_board_entry_unique_constraint():
+    table = Base.metadata.tables["board_entries"]
+    constraint_names = {c.name for c in table.constraints}
+    assert "uq_board_entry_profile_tender" in constraint_names
 
 
 # ---------------------------------------------------------------------------
