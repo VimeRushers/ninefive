@@ -1,9 +1,7 @@
 import asyncio
 from logging.config import fileConfig
 
-# Import the models package so every table registers with Base.metadata
-# before autogenerate inspects it. Add new model files to app/models/__init__.py.
-import app.models  # noqa: F401
+import app.models.tender  # noqa: F401
 from alembic import context
 from app.core.config import settings
 from app.core.database import Base

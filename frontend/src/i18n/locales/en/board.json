@@ -1,0 +1,110 @@
+{
+  "title": "Tenders",
+  "cardCount_one": "{{count}} tender",
+  "cardCount_other": "{{count}} tenders",
+  "description": "Tenders that match your profile, by stage.",
+  "stats": {
+    "total": "Total value: {{value}}"
+  },
+  "column": {
+    "empty": "No tenders"
+  },
+  "card": {
+    "value": "Value",
+    "deadline": "Deadline",
+    "eligibility": "Eligibility",
+    "winChance": "Win chance",
+    "updated": "Updated",
+    "signals_one": "{{count}} signal",
+    "signals_other": "{{count}} signals"
+  },
+  "scrollLeft": "Scroll left",
+  "scrollRight": "Scroll right",
+  "search": {
+    "label": "Search tenders",
+    "placeholder": "Search by title, buyer, tag or region",
+    "clear": "Clear search",
+    "shortcut": "Press / to search",
+    "noResults": "No tenders match “{{query}}”",
+    "noResultsHint": "Try other words, in Romanian or Russian.",
+    "results_one": "{{count}} result",
+    "results_other": "{{count}} results"
+  },
+  "view": {
+    "label": "View",
+    "board": "Board",
+    "list": "List"
+  },
+  "list": {
+    "tender": "Tender",
+    "stage": "Stage",
+    "signals": "Signals",
+    "actions": "Actions"
+  },
+  "filters": {
+    "label": "Filters",
+    "published": "Published",
+    "modified": "Modified",
+    "start": "Tender start",
+    "price": "Price",
+    "region": "Location",
+    "tags": "Tags",
+    "from": "From",
+    "to": "To",
+    "since": "from {{date}}",
+    "until": "until {{date}}",
+    "priceMin": "Minimum, MDL",
+    "priceMax": "Maximum, MDL",
+    "atLeast": "over {{value}}",
+    "atMost": "up to {{value}}",
+    "apply": "Apply",
+    "allRegions": "All regions",
+    "clearOne": "Remove the “{{label}}” filter",
+    "reset": "Reset filters",
+    "noResults": "No tenders match these filters",
+    "noResultsHint": "Change or reset the filters.",
+    "stage": "Stage",
+    "winChance": "Win chance",
+    "eligibility": "Eligibility",
+    "minPercent": "Minimum, %",
+    "maxPercent": "Maximum, %",
+    "winNote": "Tenders without an estimate are hidden while this filter is on.",
+    "eligibilityNote": "Tenders that could not be checked are hidden while this filter is on."
+  },
+  "menu": {
+    "label": "Actions for “{{title}}”",
+    "open": "Open tender",
+    "openMtender": "Open in MTender",
+    "moveTo": "Move to"
+  },
+  "drag": {
+    "handle": "Move “{{title}}”",
+    "roleDescription": "draggable card",
+    "instructions": "Press Space or Enter to pick up the card. Use the left and right arrow keys to move it between columns. Press Space or Enter to drop it, or Escape to cancel.",
+    "picked": "Picked up “{{title}}” from “{{stage}}”.",
+    "over": "Over the “{{stage}}” column.",
+    "outside": "The card is not over a column.",
+    "dropped": "Moved “{{title}}” to “{{stage}}”.",
+    "stayed": "“{{title}}” stays in “{{stage}}”.",
+    "cancelled": "Move cancelled. “{{title}}” stays in “{{stage}}”."
+  },
+  "reasons": {
+    "unmet": "Requirement not met",
+    "required": "Required",
+    "ours": "You have",
+    "notInProfile": "Not in your profile",
+    "grayZone": "Not sure you have what they ask for",
+    "closest": "Closest in your catalogue",
+    "noClosest": "Nothing similar in your catalogue",
+    "match": "{{value}} match",
+    "haveIt": "We have it",
+    "dontHave": "We don't",
+    "more_one": "{{count}} more reason",
+    "more_other": "{{count}} more reasons",
+    "less": "Show less"
+  },
+  "move": {
+    "error": "Couldn't move the tender. Check your connection and try again.",
+    "dismiss": "Dismiss"
+  }
+}

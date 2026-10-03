@@ -1,0 +1,146 @@
+{
+  "title": "Profilul companiei",
+  "description": "Datele pe care AI le folosește ca să găsească licitații potrivite.",
+  "completion": {
+    "title": "Completarea profilului",
+    "count": "{{done}} din {{total}} completate",
+    "complete": "Profilul e complet. AI are tot ce îi trebuie ca să găsească licitații potrivite.",
+    "missing": "Adăugați și acestea, ca AI să găsească licitații mai potrivite:",
+    "todo": {
+      "idno": "Adaugă IDNO-ul",
+      "name": "Adaugă denumirea companiei",
+      "description": "Descrie ce face compania",
+      "cpv": "Adaugă un cod CPV",
+      "region": "Adaugă o regiune",
+      "turnover": "Adaugă cifra de afaceri anuală",
+      "employees": "Adaugă numărul de angajați",
+      "catalogue": "Încarcă o listă de prețuri"
+    }
+  },
+  "company": {
+    "title": "Compania",
+    "idno": "IDNO",
+    "idnoHint": "13 cifre. Căutăm compania în data2b.md.",
+    "name": "Denumire"
+  },
+  "lookup": {
+    "searching": "Căutăm IDNO-ul în data2b.md…",
+    "found": "Găsit în {{source}}",
+    "notFound": "data2b.md nu are o companie cu acest IDNO. Completați datele manual.",
+    "failed": "data2b.md nu a răspuns. Completați datele manual.",
+    "legalForm": "Formă juridică",
+    "address": "Adresă",
+    "registered": "Înregistrată",
+    "activities": "Activități",
+    "fill": "Completează din {{source}}",
+    "matches": "Denumirea și regiunea din profil coincid cu aceste date."
+  },
+  "aiDescription": {
+    "title": "Descriere pentru AI",
+    "label": "Ce face compania",
+    "hint": "Scrieți ce vindeți, ce servicii oferiți și unde lucrați. AI citește textul ca să aleagă licitațiile potrivite."
+  },
+  "matching": {
+    "title": "Potrivire",
+    "cpv": "Coduri CPV",
+    "cpvHint": "Format 30213000-5. Puteți lipi mai multe coduri deodată.",
+    "addCpv": "Adaugă codul CPV",
+    "regions": "Regiuni",
+    "regionsHint": "Unde puteți livra sau lucra.",
+    "addRegion": "Adaugă regiunea",
+    "budget": "Valoarea licitațiilor, MDL",
+    "budgetMin": "De la",
+    "budgetMax": "Până la",
+    "budgetHint": "Lăsați gol dacă nu aveți o limită."
+  },
+  "eligibility": {
+    "title": "Eligibilitate",
+    "hint": "Comparăm aceste date cu cerințele licitațiilor, de exemplu cu cifra de afaceri minimă.",
+    "turnover": "Cifra de afaceri anuală, MDL",
+    "employees": "Angajați",
+    "licenses": "Licențe",
+    "addLicense": "Adaugă licența",
+    "certifications": "Certificări",
+    "addCertification": "Adaugă certificarea"
+  },
+  "chips": {
+    "add": "Adaugă",
+    "remove": "Elimină {{value}}",
+    "none": "Nimic adăugat încă.",
+    "duplicate": "{{value}} este deja în listă."
+  },
+  "errors": {
+    "idnoFormat": "IDNO-ul are 13 cifre.",
+    "nameRequired": "Introduceți denumirea companiei.",
+    "descriptionRequired": "Descrieți ce face compania.",
+    "notAmount": "Suma nu poate fi negativă.",
+    "notWholeNumber": "Introduceți un număr întreg, de la 0 în sus.",
+    "maxBelowMin": "Valoarea maximă e mai mică decât cea minimă.",
+    "cpvFormat": "Codul CPV are forma 30213000-5."
+  },
+  "save": {
+    "save": "Salvează profilul",
+    "saving": "Se salvează…",
+    "saved": "Salvat",
+    "discard": "Renunță la modificări",
+    "unsaved": "Modificări nesalvate",
+    "invalid": "Corectați câmpurile marcate ca să puteți salva.",
+    "failed": "Profilul nu a fost salvat. Încercați din nou."
+  },
+  "leave": {
+    "title": "Plecați fără să salvați?",
+    "description": "Modificările din profil se vor pierde.",
+    "stay": "Rămâi pe pagină",
+    "leave": "Pleacă fără să salvezi"
+  },
+  "pricelists": {
+    "title": "Liste de prețuri",
+    "drop": "Trageți aici o listă de prețuri",
+    "formats": "Excel, CSV sau PDF. Citim din ea produsele, serviciile și prețurile.",
+    "choose": "Alege un fișier",
+    "inputLabel": "Încarcă o listă de prețuri",
+    "uploading": "Se încarcă…",
+    "wrongType": "{{file}} nu e un fișier Excel, CSV sau PDF.",
+    "uploadFailed": "{{file}} nu s-a încărcat. Încercați din nou.",
+    "empty": "Nu ați încărcat încă nicio listă de prețuri.",
+    "uploaded": "Încărcat {{time}}",
+    "processing": "Se citește fișierul…",
+    "failed": "Fișierul nu a putut fi citit",
+    "items_one": "{{count}} articol",
+    "items_few": "{{count}} articole",
+    "items_other": "{{count}} de articole",
+    "delete": "Șterge {{file}}",
+    "deleteTitle": "Ștergeți lista de prețuri?",
+    "deleteDescription_zero": "Ștergem fișierul {{file}}.",
+    "deleteDescription_one": "Ștergem fișierul {{file}} și {{count}} articol din catalog citit din el.",
+    "deleteDescription_few": "Ștergem fișierul {{file}} și cele {{count}} articole din catalog citite din el.",
+    "deleteDescription_other": "Ștergem fișierul {{file}} și cele {{count}} de articole din catalog citite din el.",
+    "cancel": "Anulează",
+    "confirmDelete": "Șterge lista de prețuri",
+    "deleteFailed": "Lista de prețuri nu a fost ștearsă. Încercați din nou."
+  },
+  "catalogue": {
+    "title": "Catalog",
+    "count_one": "{{count}} articol",
+    "count_few": "{{count}} articole",
+    "count_other": "{{count}} de articole",
+    "note": "Păstrăm doar denumirea, descrierea și prețul. Cantitățile nu se salvează, pentru că stocul se schimbă.",
+    "name": "Denumire",
+    "description": "Descriere",
+    "price": "Preț",
+    "priceInput": "Preț, MDL",
+    "actions": "Acțiuni",
+    "from": "Din {{file}}",
+    "edit": "Editează {{name}}",
+    "delete": "Șterge {{name}}",
+    "save": "Salvează",
+    "cancel": "Anulează",
+    "nameRequired": "Introduceți denumirea.",
+    "priceInvalid": "Introduceți un preț de la 0 în sus.",
+    "saveFailed": "Articolul nu a fost salvat. Încercați din nou.",
+    "deleteFailed": "Articolul nu a fost șters. Încercați din nou.",
+    "emptyTitle": "Catalogul e gol",
+    "emptyDescription": "Încărcați o listă de prețuri și citim din ea produsele și serviciile voastre.",
+    "emptyAction": "Încarcă o listă de prețuri"
+  }
+}

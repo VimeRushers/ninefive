@@ -1,0 +1,61 @@
+{
+  "title": "Semnale de integritate",
+  "buyerTitle": "Profilul cumpărătorului",
+  "note": "Semnalele arată tipare din date, nu dovezi ale unor încălcări. Un tipar poate avea o explicație obișnuită, de exemplu o piață cu puțini furnizori. Verificați dovezile și trageți propriile concluzii.",
+  "summary": {
+    "found_one": "{{count}} semnal detectat din {{total}} indicatori verificați",
+    "found_few": "{{count}} semnale detectate din {{total}} indicatori verificați",
+    "found_other": "{{count}} de semnale detectate din {{total}} indicatori verificați",
+    "none": "{{total}} indicatori verificați, niciun semnal detectat"
+  },
+  "status": {
+    "detected": "Detectat",
+    "clear": "Nedetectat",
+    "unsupported": "Fără dovezi de afișat"
+  },
+  "evidence": "Dovezi",
+  "buyerHistory": "Vezi istoricul cumpărătorului",
+  "notDetected": {
+    "title": "Indicatori fără semnal"
+  },
+  "empty": {
+    "title": "Indicatorii nu au fost verificați încă",
+    "description": "Semnalele apar după ce documentele licitației și datele din MTender sunt analizate."
+  },
+  "indicator": {
+    "short_submission_window": {
+      "label": "Termen scurt de depunere",
+      "description": "Între publicare și termenul-limită e mult mai puțin timp decât la licitațiile similare."
+    },
+    "single_bidder_history": {
+      "label": "Adesea un singur ofertant",
+      "description": "Multe licitații ale acestui cumpărător au primit o singură ofertă."
+    },
+    "repeat_winner": {
+      "label": "Același furnizor câștigă des",
+      "description": "Un singur furnizor a câștigat o parte mare din contractele acestui cumpărător."
+    },
+    "brand_without_equivalent": {
+      "label": "Marcă fără „sau echivalent”",
+      "description": "Caietul de sarcini cere o marcă anume, fără mențiunea „sau echivalent”."
+    },
+    "narrow_tolerances": {
+      "label": "Toleranțe foarte înguste",
+      "description": "Specificațiile lasă foarte puțină variație, ceea ce poate exclude produse comparabile."
+    },
+    "cpv_mismatch": {
+      "label": "Cod CPV nepotrivit",
+      "description": "Codul CPV nu se potrivește cu ce descrie textul licitației."
+    }
+  },
+  "buyer": {
+    "totalTenders": "Licitații publicate",
+    "singleBidderRate": "Cu o singură ofertă",
+    "repeatWinner": "Cota celui mai frecvent câștigător",
+    "topWinners": "Cei mai frecvenți câștigători",
+    "company": "Companie",
+    "contracts": "Contracte",
+    "value": "Valoare",
+    "share": "Cotă"
+  }
+}

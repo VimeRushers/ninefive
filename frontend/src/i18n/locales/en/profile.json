@@ -1,0 +1,143 @@
+{
+  "title": "Company profile",
+  "description": "The data the AI uses to find matching tenders.",
+  "completion": {
+    "title": "Profile completion",
+    "count": "{{done}} of {{total}} done",
+    "complete": "Your profile is complete. The AI has what it needs to find matching tenders.",
+    "missing": "Add these so the AI finds better matches:",
+    "todo": {
+      "idno": "Add your IDNO",
+      "name": "Add the company name",
+      "description": "Describe what the company does",
+      "cpv": "Add a CPV code",
+      "region": "Add a region",
+      "turnover": "Add your annual turnover",
+      "employees": "Add the number of employees",
+      "catalogue": "Upload a pricelist"
+    }
+  },
+  "company": {
+    "title": "Company",
+    "idno": "IDNO",
+    "idnoHint": "13 digits. We look the company up in data2b.md.",
+    "name": "Name"
+  },
+  "lookup": {
+    "searching": "Looking up the IDNO in data2b.md…",
+    "found": "Found in {{source}}",
+    "notFound": "data2b.md has no company with this IDNO. Fill in the details yourself.",
+    "failed": "data2b.md did not respond. Fill in the details yourself.",
+    "legalForm": "Legal form",
+    "address": "Address",
+    "registered": "Registered",
+    "activities": "Activities",
+    "fill": "Fill in from {{source}}",
+    "matches": "The name and region in your profile match this record."
+  },
+  "aiDescription": {
+    "title": "Description for the AI",
+    "label": "What the company does",
+    "hint": "Write what you sell, what services you offer and where you work. The AI reads this to pick matching tenders."
+  },
+  "matching": {
+    "title": "Matching",
+    "cpv": "CPV codes",
+    "cpvHint": "Format 30213000-5. You can paste several codes at once.",
+    "addCpv": "Add CPV code",
+    "regions": "Regions",
+    "regionsHint": "Where you can deliver or work.",
+    "addRegion": "Add region",
+    "budget": "Tender value, MDL",
+    "budgetMin": "From",
+    "budgetMax": "Up to",
+    "budgetHint": "Leave empty if you have no limit."
+  },
+  "eligibility": {
+    "title": "Eligibility",
+    "hint": "We compare these with tender requirements, such as a minimum turnover.",
+    "turnover": "Annual turnover, MDL",
+    "employees": "Employees",
+    "licenses": "Licenses",
+    "addLicense": "Add license",
+    "certifications": "Certifications",
+    "addCertification": "Add certification"
+  },
+  "chips": {
+    "add": "Add",
+    "remove": "Remove {{value}}",
+    "none": "Nothing added yet.",
+    "duplicate": "{{value}} is already in the list."
+  },
+  "errors": {
+    "idnoFormat": "An IDNO has 13 digits.",
+    "nameRequired": "Enter the company name.",
+    "descriptionRequired": "Describe what the company does.",
+    "notAmount": "The amount can't be negative.",
+    "notWholeNumber": "Enter a whole number, 0 or more.",
+    "maxBelowMin": "The maximum is lower than the minimum.",
+    "cpvFormat": "A CPV code looks like 30213000-5."
+  },
+  "save": {
+    "save": "Save profile",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "discard": "Discard changes",
+    "unsaved": "Unsaved changes",
+    "invalid": "Fix the marked fields to save.",
+    "failed": "The profile was not saved. Try again."
+  },
+  "leave": {
+    "title": "Leave without saving?",
+    "description": "Your changes to the profile will be lost.",
+    "stay": "Stay on this page",
+    "leave": "Leave without saving"
+  },
+  "pricelists": {
+    "title": "Pricelists",
+    "drop": "Drag a pricelist here",
+    "formats": "Excel, CSV or PDF. We read the products, services and prices from it.",
+    "choose": "Choose a file",
+    "inputLabel": "Upload a pricelist",
+    "uploading": "Uploading…",
+    "wrongType": "{{file}} is not an Excel, CSV or PDF file.",
+    "uploadFailed": "{{file}} did not upload. Try again.",
+    "empty": "You have not uploaded a pricelist yet.",
+    "uploaded": "Uploaded {{time}}",
+    "processing": "Reading the file…",
+    "failed": "The file could not be read",
+    "items_one": "{{count}} item",
+    "items_other": "{{count}} items",
+    "delete": "Delete {{file}}",
+    "deleteTitle": "Delete this pricelist?",
+    "deleteDescription_zero": "This deletes {{file}}.",
+    "deleteDescription_one": "This deletes {{file}} and the {{count}} catalogue item read from it.",
+    "deleteDescription_other": "This deletes {{file}} and the {{count}} catalogue items read from it.",
+    "cancel": "Cancel",
+    "confirmDelete": "Delete pricelist",
+    "deleteFailed": "The pricelist was not deleted. Try again."
+  },
+  "catalogue": {
+    "title": "Catalogue",
+    "count_one": "{{count}} item",
+    "count_other": "{{count}} items",
+    "note": "We keep only the name, description and price. Quantities are never stored, because stock changes.",
+    "name": "Name",
+    "description": "Description",
+    "price": "Price",
+    "priceInput": "Price, MDL",
+    "actions": "Actions",
+    "from": "From {{file}}",
+    "edit": "Edit {{name}}",
+    "delete": "Delete {{name}}",
+    "save": "Save",
+    "cancel": "Cancel",
+    "nameRequired": "Enter a name.",
+    "priceInvalid": "Enter a price of 0 or more.",
+    "saveFailed": "The item was not saved. Try again.",
+    "deleteFailed": "The item was not deleted. Try again.",
+    "emptyTitle": "The catalogue is empty",
+    "emptyDescription": "Upload a pricelist and we will read your products and services from it.",
+    "emptyAction": "Upload a pricelist"
+  }
+}

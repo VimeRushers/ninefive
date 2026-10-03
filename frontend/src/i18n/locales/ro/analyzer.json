@@ -1,0 +1,67 @@
+{
+  "title": "Analiza concurenților",
+  "status": {
+    "analyzing": {
+      "title": "Se analizează fișiere noi sau modificate",
+      "previous": "Rezultatele de mai jos sunt din analiza anterioară, din {{date}}.",
+      "first": "Rezultatele apar aici când se termină analiza."
+    },
+    "upToDate": {
+      "title": "Analizat pe {{date}}",
+      "since": "Fișierele participanților nu s-au schimbat de atunci.",
+      "titleNoDate": "Analiza este la zi",
+      "sinceLast": "Fișierele participanților nu s-au schimbat de la ultima analiză."
+    }
+  },
+  "noDocuments": {
+    "title": "Documentele participanților nu sunt publicate încă",
+    "description": "MTender publică ofertele participanților abia după deschiderea ofertelor, așa că deocamdată nu avem ce analiza.",
+    "whenDeadline": "Ofertele se deschid după termenul-limită, {{date}}. Când documentele sunt publicate, le analizăm automat, iar rezultatele apar aici.",
+    "when": "Când documentele sunt publicate, le analizăm automat, iar rezultatele apar aici."
+  },
+  "noParticipants": "Nu am găsit participanți în documentele publicate.",
+  "kpi": {
+    "participants": "Participanți",
+    "includingYou": "Inclusiv oferta voastră",
+    "rejected": "Respinși sau descalificați",
+    "rejectedHint": "Respinși: {{rejected}} · Descalificați: {{disqualified}}",
+    "winningPrice": "Prețul câștigător față de valoarea estimată",
+    "winningPriceHint": "{{price}} din {{estimate}}",
+    "yourResult": "Rezultatul vostru",
+    "yourBid": "Oferta voastră: {{percent}} din valoarea estimată"
+  },
+  "result": {
+    "winner": "Câștigat",
+    "rejected": "Ofertă respinsă",
+    "disqualified": "Ofertă descalificată",
+    "under_evaluation": "În evaluare"
+  },
+  "participantStatus": {
+    "winner": "Câștigător",
+    "rejected": "Respins",
+    "disqualified": "Descalificat",
+    "under_evaluation": "În evaluare"
+  },
+  "participants": {
+    "title": "Participanți"
+  },
+  "participant": {
+    "you": "Voi",
+    "idno": "IDNO {{idno}}",
+    "bidPrice": "Prețul ofertei",
+    "share": "{{percent}} din valoarea estimată",
+    "rejectedReason": "Motivul respingerii",
+    "disqualifiedReason": "Motivul descalificării",
+    "strengths": "Puncte forte",
+    "weaknesses": "Puncte slabe",
+    "nothingNoted": "Nimic notat în documente.",
+    "documents": "Documentele ofertei",
+    "noDocuments": "Niciun document publicat.",
+    "pages": "{{pages}} pag.",
+    "analyzing": "Se analizează",
+    "newTab": "(se deschide într-o filă nouă)"
+  },
+  "lessons": {
+    "title": "Ce să faceți diferit la licitații similare"
+  }
+}

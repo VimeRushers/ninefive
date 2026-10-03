@@ -1,0 +1,60 @@
+{
+  "title": "Integrity signals",
+  "buyerTitle": "Buyer profile",
+  "note": "Signals show patterns in the data, not proof of wrongdoing. A pattern can have an ordinary explanation, such as a market with few suppliers. Check the evidence and draw your own conclusions.",
+  "summary": {
+    "found_one": "{{count}} signal detected out of {{total}} indicators checked",
+    "found_other": "{{count}} signals detected out of {{total}} indicators checked",
+    "none": "{{total}} indicators checked, no signals detected"
+  },
+  "status": {
+    "detected": "Detected",
+    "clear": "Not detected",
+    "unsupported": "No evidence to show"
+  },
+  "evidence": "Evidence",
+  "buyerHistory": "See the buyer’s history",
+  "notDetected": {
+    "title": "Indicators with no signal"
+  },
+  "empty": {
+    "title": "The indicators haven’t been checked yet",
+    "description": "Signals appear once the tender documents and the MTender data have been analyzed."
+  },
+  "indicator": {
+    "short_submission_window": {
+      "label": "Short submission window",
+      "description": "There is much less time between publication and the deadline than in similar tenders."
+    },
+    "single_bidder_history": {
+      "label": "Often a single bidder",
+      "description": "Many of this buyer’s tenders received only one bid."
+    },
+    "repeat_winner": {
+      "label": "Same supplier wins often",
+      "description": "One supplier has won a large share of this buyer’s contracts."
+    },
+    "brand_without_equivalent": {
+      "label": "Brand without “or equivalent”",
+      "description": "The specifications ask for a specific brand without the words “or equivalent”."
+    },
+    "narrow_tolerances": {
+      "label": "Very narrow tolerances",
+      "description": "The specifications allow very little variation, which can exclude comparable products."
+    },
+    "cpv_mismatch": {
+      "label": "CPV code mismatch",
+      "description": "The CPV code doesn’t match what the tender text describes."
+    }
+  },
+  "buyer": {
+    "totalTenders": "Tenders published",
+    "singleBidderRate": "With a single bid",
+    "repeatWinner": "Top winner’s share",
+    "topWinners": "Most frequent winners",
+    "company": "Company",
+    "contracts": "Contracts",
+    "value": "Value",
+    "share": "Share"
+  }
+}

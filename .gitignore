@@ -32,4 +32,10 @@ coverage.xml
 
 # Local data / model weights
 data/raw/
+
+# Project notes, kept local
+CONTEXT.md
+
+BACKEND_TODO.md
+
 model-weights/
