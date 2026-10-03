@@ -40,7 +40,7 @@ from app.schemas import (
     TenderDetail,
     TenderDocument,
 )
-from app.services.red_flags import evaluate_all_red_flags
+from app.services.red_flags import ChunkRef, evaluate_all_red_flags
 from app.services.tags import tags_for_cpv
 from app.services.win_chance import estimate_win_chance
 
@@ -265,16 +265,40 @@ async def get_tender_analysis(
             historical_awards.extend(bt.awards or [])
 
     # 2. Run red-flags
-    chunk_tuples = [
-        (c.text or "", f"Page {c.page_number}", c.page_number)
-        for c in (tender.chunks or [])
-        if c.text
-    ]
+    docs_by_id = {d.id: d for d in (tender.documents or [])}
+    chunk_refs: list[ChunkRef] = []
+    for chunk in tender.chunks or []:
+        if not chunk.text:
+            continue
+        doc = docs_by_id.get(chunk.document_id)
+        chunk_refs.append(
+            ChunkRef(
+                text=chunk.text,
+                document_id=str(chunk.document_id),
+                document_title=doc.title if doc and doc.title else f"Document {chunk.document_id}",
+                page=chunk.page_number,
+                url=doc.url if doc else None,
+            )
+        )
+
+    mtender_url = f"https://mtender.gov.md/tenders/{tender.ocds_id}"
+    tender_citation = Citation(
+        document_id=tender.ocds_id,
+        document_title="Anunț de participare",
+        url=mtender_url,
+    )
+    buyer_citation = Citation(
+        document_id=str(tender.buyer_id or tender.buyer_ocds_id or tender.ocds_id),
+        document_title="Istoricul achizițiilor autorității contractante",
+        url=mtender_url,
+    )
     red_flags = evaluate_all_red_flags(
         tender=tender,
         buyer=tender.buyer,
         historical_awards=historical_awards or tender.awards or [],
-        chunk_texts=chunk_tuples,
+        chunk_texts=chunk_refs,
+        tender_citation=tender_citation,
+        buyer_citation=buyer_citation,
     )
 
     # 3. Load profile and compute fit_score
