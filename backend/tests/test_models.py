@@ -225,6 +225,10 @@ def test_catalogue_item_columns():
     assert required.issubset(cols), f"Missing CatalogueItem columns: {required - cols}"
 
 
+def test_tender_has_embedding_column():
+    assert "embedding" in column_names(Tender)
+
+
 def test_board_entry_columns():
     cols = column_names(BoardEntry)
     required = {

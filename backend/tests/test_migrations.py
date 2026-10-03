@@ -14,7 +14,7 @@ def _script_directory() -> ScriptDirectory:
 
 def test_migrations_have_single_head():
     script = _script_directory()
-    assert list(script.get_heads()) == ["0001_initial"]
+    assert list(script.get_heads()) == ["0002_tender_embeddings"]
 
 
 def test_initial_revision_has_upgrade_and_downgrade():
