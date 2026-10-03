@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import buyers, profile, search, tenders
+from app.api import board, buyers, profile, search, tenders
 from app.core.config import settings
 
 app = FastAPI(
@@ -18,6 +18,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(board.router, prefix="/board", tags=["board"])
 app.include_router(profile.router, prefix="/profile", tags=["profile"])
 app.include_router(search.router, prefix="/search", tags=["search"])
 app.include_router(tenders.router, prefix="/tenders", tags=["tenders"])

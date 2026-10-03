@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     deepseek_model: str = "deepseek-chat"
 
     embed_model: str = "intfloat/multilingual-e5-large"
+    docs_dir: str = "data/docs"
     debug: bool = False
     log_level: str = "info"
 

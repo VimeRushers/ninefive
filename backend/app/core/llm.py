@@ -16,6 +16,6 @@ from openai import AsyncOpenAI
 from app.core.config import settings
 
 llm = AsyncOpenAI(
-    api_key=settings.deepseek_api_key,
+    api_key=settings.deepseek_api_key if settings.deepseek_api_key else "none",
     base_url=settings.deepseek_base_url,
 )
