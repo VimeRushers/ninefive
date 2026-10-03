@@ -4,6 +4,7 @@ Tender Board API — Kanban board supporting stages and filtering.
 
 from __future__ import annotations
 
+import math
 import unicodedata
 from datetime import date, datetime, timezone
 
@@ -13,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
+from app.core.embedder import embed_texts
 from app.models.award import Award
 from app.models.board import BoardEntry
 from app.models.profile import CompanyProfile
@@ -66,6 +68,26 @@ def _eligibility_share(card: BoardCard) -> float | None:
     return summary.met_count / checkable
 
 
+def _vector(value: object) -> list[float]:
+    if value is None:
+        return []
+    try:
+        return [float(x) for x in value]  # type: ignore[union-attr]
+    except TypeError:
+        return []
+
+
+def _cosine(a: list[float], b: list[float]) -> float:
+    if not a or not b or len(a) != len(b):
+        return 0.0
+    dot = sum(x * y for x, y in zip(a, b))
+    norm_a = math.sqrt(sum(x * x for x in a))
+    norm_b = math.sqrt(sum(y * y for y in b))
+    if norm_a == 0.0 or norm_b == 0.0:
+        return 0.0
+    return dot / (norm_a * norm_b)
+
+
 def _to_card(
     tender: Tender,
     entry: BoardEntry | None,
@@ -107,6 +129,46 @@ def _to_card(
         red_flag_count=sum(1 for flag in red_flags if flag.triggered),
         changed_in_last_sync=changed_in_last_sync,
     )
+
+
+async def _semantic_board(
+    tenders: list[Tender],
+    q: str,
+    entries: dict[int, BoardEntry],
+    awards_by_buyer: dict[int, list[Award]],
+    profile: CompanyProfile | None,
+    changed_ids: set[int],
+) -> list[BoardCard]:
+    """Fallback search by meaning when no card matched the lexical query."""
+    if not any(t.embedding is not None for t in tenders):
+        return []
+
+    embeddings = await embed_texts([q], is_query=True)
+    query_vec = _vector(embeddings[0]) if embeddings else []
+    if not query_vec:
+        return []
+
+    scored: list[tuple[float, Tender]] = []
+    for tender in tenders:
+        similarity = _cosine(query_vec, _vector(tender.embedding))
+        if similarity >= 0.35:
+            scored.append((similarity, tender))
+
+    scored.sort(key=lambda item: item[0], reverse=True)
+
+    cards: list[BoardCard] = []
+    for _similarity, tender in scored:
+        historical = awards_by_buyer.get(tender.buyer_id, []) if tender.buyer_id else []
+        cards.append(
+            _to_card(
+                tender,
+                entries.get(tender.id),
+                historical,
+                profile=profile,
+                changed_in_last_sync=tender.id in changed_ids,
+            )
+        )
+    return cards
 
 
 @router.get("", response_model=BoardResponse)
@@ -219,6 +281,11 @@ async def get_board(
             continue
 
         cards.append(card)
+
+    if q and not cards:
+        cards = await _semantic_board(
+            tenders, q, entries, awards_by_buyer, profile, changed_ids
+        )
 
     return BoardResponse(
         profile_id=profile_id,

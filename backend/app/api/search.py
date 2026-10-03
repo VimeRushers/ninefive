@@ -1,16 +1,12 @@
 """
-Search API router — Semantic and vector search over tenders and document chunks.
+Search API router — semantic vector search over tenders.
 """
 
 from __future__ import annotations
 
-import math
-from typing import Any
-
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.core.embedder import embed_texts
@@ -22,15 +18,11 @@ from app.schemas import MoneyAmount, SearchResponse, SearchResult
 router = APIRouter()
 
 
-def _cosine_similarity(vec_a: list[float], vec_b: list[float]) -> float:
-    if not vec_a or not vec_b or len(vec_a) != len(vec_b):
-        return 0.0
-    dot = sum(a * b for a, b in zip(vec_a, vec_b))
-    norm_a = math.sqrt(sum(a * a for a in vec_a))
-    norm_b = math.sqrt(sum(b * b for b in vec_b))
-    if norm_a == 0.0 or norm_b == 0.0:
-        return 0.0
-    return max(0.0, min(1.0, dot / (norm_a * norm_b)))
+def _fit_score(distance: float, cpv_boost: bool) -> float:
+    similarity = max(0.0, min(1.0, 1.0 - float(distance)))
+    if cpv_boost:
+        similarity = min(1.0, similarity + 0.2)
+    return round(max(0.05, similarity), 2)
 
 
 @router.get("", response_model=SearchResponse)
@@ -41,90 +33,70 @@ async def search_tenders(
     offset: int = Query(0),
     db: AsyncSession = Depends(get_db),
 ) -> SearchResponse:
-    # 1. Embed query
     query_embeddings = await embed_texts([q], is_query=True)
     query_vec = query_embeddings[0] if query_embeddings else None
+    if query_vec is None:
+        return SearchResponse(query=q, profile_id=profile_id, results=[], total=0)
 
-    # 2. Fetch profile embedding if profile_id provided
-    profile_vec = None
     profile_cpvs: set[str] = set()
     if profile_id:
-        p_stmt = select(CompanyProfile).where(CompanyProfile.id == profile_id)
-        p_res = await db.execute(p_stmt)
-        prof = p_res.scalar_one_or_none()
-        if prof:
-            profile_vec = prof.embedding
-            if prof.cpv_codes:
-                profile_cpvs = set(prof.cpv_codes)
-
-    # 3. Load all tenders and their chunks
-    stmt = (
-        select(Tender)
-        .options(selectinload(Tender.chunks), selectinload(Tender.documents))
-        .order_by(Tender.published_at.desc().nullslast())
-    )
-    res = await db.execute(stmt)
-    all_tenders = list(res.scalars().all())
-
-    scored_results: list[SearchResult] = []
-
-    for tender in all_tenders:
-        best_chunk_score = 0.0
-        best_chunk_text = ""
-
-        # Score chunks if available
-        if tender.chunks and query_vec:
-            for chunk in tender.chunks:
-                if chunk.embedding is not None:
-                    # In pgvector / python memory
-                    c_vec = (
-                        list(chunk.embedding)
-                        if hasattr(chunk.embedding, "__iter__")
-                        else []
-                    )
-                    sim = _cosine_similarity(query_vec, c_vec)
-                    if sim > best_chunk_score:
-                        best_chunk_score = sim
-                        best_chunk_text = chunk.text
-
-        # Fallback text scoring if no chunks or lexical match
-        tender_title = tender.title or ""
-        tender_desc = tender.description or ""
-        combined_text = f"{tender_title} {tender_desc}".lower()
-
-        # Word overlap bonus
-        q_words = [w.lower() for w in q.split() if len(w) > 2]
-        match_count = sum(1 for w in q_words if w in combined_text)
-        lexical_score = (match_count / max(1, len(q_words))) if q_words else 0.0
-
-        base_sim = max(best_chunk_score, lexical_score)
-
-        # Profile CPV overlap boost
-        profile_boost = 0.0
-        if profile_cpvs and tender.cpv_codes:
-            overlap = set(tender.cpv_codes).intersection(profile_cpvs)
-            if overlap:
-                profile_boost = 0.2
-
-        fit_score = max(
-            0.05,
-            min(
-                1.0,
-                0.7 * base_sim + 0.3 * profile_boost
-                if (base_sim > 0 or profile_boost > 0)
-                else 0.1,
-            ),
-        )
-
-        # Build match snippet
-        if not best_chunk_text:
-            best_chunk_text = (
-                tender_desc[:250]
-                if tender_desc
-                else (tender_title or "Potrivire pe baza specificațiilor achiziției.")
+        profile = (
+            await db.execute(
+                select(CompanyProfile).where(CompanyProfile.id == profile_id)
             )
+        ).scalar_one_or_none()
+        if profile and profile.cpv_codes:
+            profile_cpvs = set(profile.cpv_codes)
 
-        scored_results.append(
+    distance = Tender.embedding.cosine_distance(query_vec)
+
+    total = (
+        await db.execute(
+            select(func.count()).select_from(Tender).where(Tender.embedding.isnot(None))
+        )
+    ).scalar_one()
+
+    rows = (
+        await db.execute(
+            select(Tender, distance.label("distance"))
+            .where(Tender.embedding.isnot(None))
+            .order_by(distance)
+            .limit(limit)
+            .offset(offset)
+        )
+    ).all()
+
+    tender_ids = [tender.id for tender, _dist in rows]
+    snippets: dict[int, str] = {}
+    if tender_ids:
+        chunk_distance = Chunk.embedding.cosine_distance(query_vec)
+        chunk_rows = (
+            await db.execute(
+                select(Chunk.tender_id, Chunk.text, chunk_distance.label("distance"))
+                .where(
+                    Chunk.tender_id.in_(tender_ids),
+                    Chunk.embedding.isnot(None),
+                )
+                .order_by(Chunk.tender_id, chunk_distance)
+            )
+        ).all()
+        for tender_id, text, _dist in chunk_rows:
+            snippets.setdefault(tender_id, text)
+
+    results: list[SearchResult] = []
+    for tender, dist in rows:
+        boost = bool(
+            profile_cpvs
+            and tender.cpv_codes
+            and profile_cpvs.intersection(tender.cpv_codes)
+        )
+        snippet = (
+            snippets.get(tender.id)
+            or (tender.description or "")[:250]
+            or tender.title
+            or "Potrivire pe baza specificațiilor achiziției."
+        )
+        results.append(
             SearchResult(
                 tender_id=str(tender.id),
                 title=tender.title or "Achiziție publică",
@@ -134,19 +106,15 @@ async def search_tenders(
                     currency=tender.currency or "MDL",
                 ),
                 deadline=tender.submission_deadline,
-                fit_score=round(fit_score, 2),
-                match_snippet=best_chunk_text[:300],
+                fit_score=_fit_score(dist, boost),
+                match_snippet=snippet[:300],
                 red_flag_count=0,
             )
         )
 
-    # Sort by fit_score descending
-    scored_results.sort(key=lambda x: x.fit_score, reverse=True)
-    paged_results = scored_results[offset : offset + limit]
-
     return SearchResponse(
         query=q,
         profile_id=profile_id,
-        results=paged_results,
-        total=len(scored_results),
+        results=results,
+        total=int(total or 0),
     )
