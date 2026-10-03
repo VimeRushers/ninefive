@@ -1,0 +1,113 @@
+{
+  "title": "Licitație",
+  "buyer": "Cumpărător",
+  "openInMTender": "Deschide în MTender",
+  "autoMoved": "Mutat automat: {{reason}}",
+  "tabs": {
+    "label": "Secțiunile licitației",
+    "details": "Detalii",
+    "competitors": "Concurenți",
+    "integrity": "Semnale de integritate"
+  },
+  "kpi": {
+    "value": "Valoare estimată",
+    "noValue": "Nespecificată",
+    "deadline": "Termen-limită",
+    "eligibility": "Eligibilitate",
+    "eligibilityValue": "{{met}} din {{total}}",
+    "notChecked": "Neverificate: {{count}}",
+    "winChance": "Șansa de câștig",
+    "notEnoughData": "Date insuficiente",
+    "signals": "Semnale de integritate"
+  },
+  "summary": {
+    "title": "Pe scurt",
+    "empty": "Rezumatul apare după ce documentele sunt analizate."
+  },
+  "eligibility": {
+    "title": "Verificarea eligibilității",
+    "listLabel": "Cerințe",
+    "met": "{{met}} din {{total}} îndeplinite",
+    "metNotChecked_one": "{{met}} din {{total}} îndeplinite, {{count}} neverificată",
+    "metNotChecked_few": "{{met}} din {{total}} îndeplinite, {{count}} neverificate",
+    "metNotChecked_other": "{{met}} din {{total}} îndeplinite, {{count}} de neverificate",
+    "percentHint": "Cerințele neverificate nu intră în procent.",
+    "status": {
+      "met": "Îndeplinită",
+      "notMet": "Neîndeplinită",
+      "notChecked": "Neverificată"
+    },
+    "type": {
+      "financial": "Financiară",
+      "technical": "Tehnică",
+      "legal": "Juridică",
+      "administrative": "Administrativă"
+    },
+    "required": "Se cere: {{value}}",
+    "notFound": "Nu apare în documente",
+    "empty": {
+      "title": "Eligibilitatea nu a fost verificată încă",
+      "description": "Lista apare după ce documentele licitației sunt analizate."
+    }
+  },
+  "winChance": {
+    "title": "Șansa de câștig",
+    "probability": "Șansa estimată",
+    "probabilityHint": "Calculată din rezultatele licitațiilor trecute ale acestui cumpărător și ale celor similare.",
+    "notEnoughData": "Încă nu sunt destule date",
+    "notEnoughDataHint": "Sunt prea puține licitații similare încheiate pentru o estimare.",
+    "bidders": "Număr obișnuit de ofertanți",
+    "biddersHint": "Câte companii depun de obicei oferte la licitații ca aceasta.",
+    "winningPrice": "Prețul câștigător obișnuit",
+    "winningPriceHint": "Ce parte din valoarea estimată cer de obicei câștigătorii.",
+    "concentration": "Contracte câștigate de aceeași companie",
+    "concentrationHint": "Ce parte din contractele acestui cumpărător a câștigat o singură companie.",
+    "noData": "Fără date",
+    "empty": {
+      "title": "Șansa de câștig nu a fost estimată încă",
+      "description": "Estimarea apare după ce sunt analizate licitațiile trecute ale cumpărătorului."
+    }
+  },
+  "products": {
+    "title": "Potrivirea produselor",
+    "matched": "{{matched}} din {{total}} găsite în catalog",
+    "tenderItem": "Ce cere licitația",
+    "estimatedPrice": "Preț unitar estimat",
+    "catalogueItem": "Cel mai apropiat din catalog",
+    "ourPrice": "Prețul vostru",
+    "match": "Potrivire",
+    "noMatch": "Nimic din catalogul vostru nu se potrivește",
+    "belowEstimate": "Cu {{percent}} sub estimare",
+    "aboveEstimate": "Cu {{percent}} peste estimare",
+    "sameAsEstimate": "Egal cu estimarea",
+    "empty": "Articolele licitației apar după ce documentele sunt analizate."
+  },
+  "changes": {
+    "title": "Istoricul modificărilor",
+    "empty": "Nicio modificare de la publicare",
+    "emptyHint": "Aici apare fiecare modificare a licitației în MTender și ce înseamnă pentru voi.",
+    "whatChanged": "Ce s-a schimbat",
+    "verdict": {
+      "still_relevant": "Încă e relevantă",
+      "irrelevant": "Nu mai e relevantă"
+    },
+    "stage": "Etapa:",
+    "stageUnchanged": "neschimbată"
+  },
+  "documents": {
+    "title": "Documente",
+    "name": "Document",
+    "pages": "Pagini",
+    "analysis": "Analiză AI",
+    "byBuyer": "Publicate de cumpărător",
+    "participant": "Participantul {{number}}",
+    "ownBid": "Oferta voastră",
+    "empty": "Încă nu sunt documente publicate."
+  },
+  "analysisStatus": {
+    "pending": "În așteptare",
+    "analyzing": "Se analizează",
+    "analyzed": "Analizat",
+    "failed": "Eșuat"
+  }
+}

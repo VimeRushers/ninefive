@@ -1,0 +1,112 @@
+{
+  "title": "Tender",
+  "buyer": "Buyer",
+  "openInMTender": "Open in MTender",
+  "autoMoved": "Moved automatically: {{reason}}",
+  "tabs": {
+    "label": "Tender sections",
+    "details": "Details",
+    "competitors": "Competitors",
+    "integrity": "Integrity signals"
+  },
+  "kpi": {
+    "value": "Estimated value",
+    "noValue": "Not stated",
+    "deadline": "Deadline",
+    "eligibility": "Eligibility",
+    "eligibilityValue": "{{met}} of {{total}}",
+    "notChecked": "Not checked: {{count}}",
+    "winChance": "Win chance",
+    "notEnoughData": "Not enough data",
+    "signals": "Integrity signals"
+  },
+  "summary": {
+    "title": "Summary",
+    "empty": "The summary appears once the documents are analyzed."
+  },
+  "eligibility": {
+    "title": "Eligibility checklist",
+    "listLabel": "Requirements",
+    "met": "{{met}} of {{total}} met",
+    "metNotChecked_one": "{{met}} of {{total}} met, {{count}} not checked",
+    "metNotChecked_other": "{{met}} of {{total}} met, {{count}} not checked",
+    "percentHint": "Requirements we could not check are left out of the percentage.",
+    "status": {
+      "met": "Met",
+      "notMet": "Not met",
+      "notChecked": "Not checked"
+    },
+    "type": {
+      "financial": "Financial",
+      "technical": "Technical",
+      "legal": "Legal",
+      "administrative": "Administrative"
+    },
+    "required": "Required: {{value}}",
+    "notFound": "Not found in the documents",
+    "empty": {
+      "title": "Eligibility not checked yet",
+      "description": "The checklist appears once the tender documents are analyzed."
+    }
+  },
+  "winChance": {
+    "title": "Win chance",
+    "probability": "Estimated chance",
+    "probabilityHint": "Based on how past tenders from this buyer and similar tenders ended.",
+    "notEnoughData": "Not enough data yet",
+    "notEnoughDataHint": "Too few similar tenders have ended to make an estimate.",
+    "bidders": "Typical number of bidders",
+    "biddersHint": "How many companies usually bid on tenders like this one.",
+    "winningPrice": "Typical winning price",
+    "winningPriceHint": "The share of the estimated value that winners usually bid.",
+    "concentration": "Contracts won by one company",
+    "concentrationHint": "The share of this buyer's contracts that went to a single company.",
+    "noData": "No data",
+    "empty": {
+      "title": "No win chance estimate yet",
+      "description": "The estimate appears once the buyer's past tenders are analyzed."
+    }
+  },
+  "products": {
+    "title": "Product match",
+    "matched": "{{matched}} of {{total}} found in your catalogue",
+    "tenderItem": "What the tender asks for",
+    "estimatedPrice": "Estimated unit price",
+    "catalogueItem": "Closest in your catalogue",
+    "ourPrice": "Your price",
+    "match": "Match",
+    "noMatch": "Nothing in your catalogue matches",
+    "belowEstimate": "{{percent}} below the estimate",
+    "aboveEstimate": "{{percent}} above the estimate",
+    "sameAsEstimate": "Same as the estimate",
+    "empty": "The tender's items appear once the documents are analyzed."
+  },
+  "changes": {
+    "title": "Change history",
+    "empty": "No changes since publication",
+    "emptyHint": "Every change to this tender on MTender shows up here, with what it means for you.",
+    "whatChanged": "What changed",
+    "verdict": {
+      "still_relevant": "Still relevant",
+      "irrelevant": "No longer relevant"
+    },
+    "stage": "Stage:",
+    "stageUnchanged": "unchanged"
+  },
+  "documents": {
+    "title": "Documents",
+    "name": "Document",
+    "pages": "Pages",
+    "analysis": "AI analysis",
+    "byBuyer": "Published by the buyer",
+    "participant": "Participant {{number}}",
+    "ownBid": "Your bid",
+    "empty": "No documents published yet."
+  },
+  "analysisStatus": {
+    "pending": "Waiting",
+    "analyzing": "Analyzing",
+    "analyzed": "Analyzed",
+    "failed": "Failed"
+  }
+}
