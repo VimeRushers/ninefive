@@ -11,7 +11,8 @@ from app.core.embedder import embed_texts
 from app.models.catalogue import CatalogueItem
 from app.models.pricelist import Pricelist
 from app.models.profile import CompanyProfile
-from app.schemas import CompanyLookup, Pricelist as PricelistSchema
+from app.schemas import CatalogueItem as CatalogueItemSchema
+from app.schemas import CatalogueItemUpdate, CompanyLookup, Pricelist as PricelistSchema
 from app.schemas import ProfileCreate, ProfileOut, ProfileUpdate
 from app.services.pricelist_parser import parse_pricelist
 
@@ -204,4 +205,65 @@ async def delete_pricelist(
         delete(CatalogueItem).where(CatalogueItem.pricelist_id == pricelist_id)
     )
     await db.delete(pricelist)
+    await db.commit()
+
+
+async def _get_catalogue_item_or_404(
+    db: AsyncSession, profile_id: int, item_id: int
+) -> CatalogueItem:
+    res = await db.execute(
+        select(CatalogueItem)
+        .join(Pricelist, CatalogueItem.pricelist_id == Pricelist.id)
+        .where(CatalogueItem.id == item_id, Pricelist.profile_id == profile_id)
+    )
+    item = res.scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Catalogue item not found")
+    return item
+
+
+@router.get("/{profile_id}/catalogue", response_model=list[CatalogueItemSchema])
+async def list_catalogue(
+    profile_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> list[CatalogueItemSchema]:
+    await _get_profile_or_404(db, profile_id)
+    res = await db.execute(
+        select(CatalogueItem)
+        .join(Pricelist, CatalogueItem.pricelist_id == Pricelist.id)
+        .where(Pricelist.profile_id == profile_id)
+        .order_by(CatalogueItem.id)
+    )
+    return [CatalogueItemSchema.model_validate(item) for item in res.scalars().all()]
+
+
+@router.patch("/{profile_id}/catalogue/{item_id}", response_model=CatalogueItemSchema)
+async def update_catalogue_item(
+    profile_id: int,
+    item_id: int,
+    payload: CatalogueItemUpdate,
+    db: AsyncSession = Depends(get_db),
+) -> CatalogueItemSchema:
+    item = await _get_catalogue_item_or_404(db, profile_id, item_id)
+
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(item, field, value)
+
+    await db.commit()
+    await db.refresh(item)
+    return CatalogueItemSchema.model_validate(item)
+
+
+@router.delete("/{profile_id}/catalogue/{item_id}", status_code=204)
+async def delete_catalogue_item(
+    profile_id: int,
+    item_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    item = await _get_catalogue_item_or_404(db, profile_id, item_id)
+    pricelist = await db.get(Pricelist, item.pricelist_id)
+
+    await db.delete(item)
+    if pricelist is not None and pricelist.item_count > 0:
+        pricelist.item_count -= 1
     await db.commit()
