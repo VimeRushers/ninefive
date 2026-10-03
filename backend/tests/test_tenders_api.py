@@ -85,8 +85,11 @@ def test_get_tender_detail():
     async def override_get_db():
         session = MagicMock()
         mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = tender
+        mock_result.scalar_one_or_none.side_effect = [tender, None]
         session.execute = AsyncMock(return_value=mock_result)
+        session.add = MagicMock()
+        session.commit = AsyncMock()
+        session.rollback = AsyncMock()
         yield session
 
     app.dependency_overrides[get_db] = override_get_db
