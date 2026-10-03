@@ -2,23 +2,6 @@
 
 AI assistant for Moldovan public procurement (MTender/OCDS).
 
-## How we work
-
-The frontend is built first. The frontend team builds the whole UI against a mock API and
-merges it to `main`. The backend is built after that, to match the API contract in
-`frontend/src/api/types.ts`.
-
-## Quick start — frontend
-
-```bash
-cd frontend
-npm install
-npm run dev                       # → http://localhost:5173
-```
-
-It runs on a mock API, so no backend is needed. See [`frontend/README.md`](frontend/README.md)
-for the mock API, checks, folder owners and team rules.
-
 ## Quick start — backend only
 
 ```bash
@@ -100,9 +83,6 @@ Backend:
 | `feat/ingestion` | A | OCDS pull script, full DB schema, Alembic migrations |
 | `feat/search` | B | pgvector search, fit score, win-chance |
 | `feat/llm-analysis` | C | Eligibility checker, red-flag rules, DeepSeek calls |
-
-Merge to `main` often. The API contract is `frontend/src/api/types.ts`; coordinate before
-changing it.
 
 ## API endpoints
 

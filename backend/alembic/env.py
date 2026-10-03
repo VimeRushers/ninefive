@@ -1,7 +1,6 @@
 import asyncio
 from logging.config import fileConfig
 
-# Import all models here so their tables register with Base.metadata
 import app.models.tender  # noqa: F401
 from alembic import context
 from app.core.config import settings

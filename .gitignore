@@ -32,10 +32,10 @@ coverage.xml
 
 # Local data / model weights
 data/raw/
-models/
 
 # Project notes, kept local
 CONTEXT.md
 
-# Handoff notes for the backend developer, sent directly, not committed
 BACKEND_TODO.md
+
+model-weights/
