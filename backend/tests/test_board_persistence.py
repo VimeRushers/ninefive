@@ -28,10 +28,14 @@ def _patch_session(entry=None):
     tender_result.scalar_one_or_none.return_value = _tender()
     entry_result = MagicMock()
     entry_result.scalar_one_or_none.return_value = entry
+    history_result = MagicMock()
+    history_result.scalars.return_value.all.return_value = []
 
     async def override_get_db():
         session = MagicMock()
-        session.execute = AsyncMock(side_effect=[tender_result, entry_result])
+        session.execute = AsyncMock(
+            side_effect=[tender_result, entry_result, history_result]
+        )
         session.add = MagicMock()
         session.commit = AsyncMock()
         session.refresh = AsyncMock()

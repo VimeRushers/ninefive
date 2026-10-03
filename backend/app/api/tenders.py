@@ -39,9 +39,10 @@ from app.schemas import (
     TenderAnalysis,
     TenderDetail,
     TenderDocument,
-    WinChanceEstimate,
 )
 from app.services.red_flags import evaluate_all_red_flags
+from app.services.tags import tags_for_cpv
+from app.services.win_chance import estimate_win_chance
 
 router = APIRouter()
 
@@ -226,47 +227,6 @@ async def _extract_eligibility_with_llm(
     )
 
 
-def _compute_win_chance(
-    tender: Tender,
-    historical_awards: list[Award],
-) -> WinChanceEstimate:
-    total_awards = len(historical_awards)
-    if total_awards == 0:
-        return WinChanceEstimate(
-            tender_id=str(tender.id),
-            estimated_probability=0.35,
-            typical_bidder_count=2.5,
-            typical_winning_ratio=0.92,
-            buyer_concentration=None,
-        )
-
-    # Compute repeat winner concentration
-    supplier_counts: dict[str, int] = {}
-    for a in historical_awards:
-        if a.supplier_name:
-            supplier_counts[a.supplier_name] = (
-                supplier_counts.get(a.supplier_name, 0) + 1
-            )
-
-    max_wins = max(supplier_counts.values()) if supplier_counts else 0
-    concentration = (max_wins / total_awards) if total_awards > 0 else 0.0
-
-    # Probability estimation heuristic
-    base_prob = 0.40
-    if concentration > 0.6:
-        base_prob -= 0.15
-    elif concentration < 0.3:
-        base_prob += 0.10
-
-    return WinChanceEstimate(
-        tender_id=str(tender.id),
-        estimated_probability=max(0.05, min(0.95, base_prob)),
-        typical_bidder_count=3.0,
-        typical_winning_ratio=0.88,
-        buyer_concentration=concentration,
-    )
-
-
 @router.get("/{tender_id}/analysis", response_model=TenderAnalysis)
 async def get_tender_analysis(
     tender_id: str,
@@ -340,7 +300,7 @@ async def get_tender_analysis(
     )
 
     # 5. Win chance estimate
-    win_chance = _compute_win_chance(tender, historical_awards or tender.awards or [])
+    win_chance = estimate_win_chance(tender, historical_awards or tender.awards or [])
 
     return TenderAnalysis(
         tender_id=str(tender.id),
@@ -416,9 +376,7 @@ async def get_tender_detail(
                 citations=[],
             )
         ],
-        tags=["IT", "Public", "Software"]
-        if "72" in str(tender.cpv_codes)
-        else ["Public Procurement"],
+        tags=tags_for_cpv(tender.cpv_codes),
         documents=docs,
         product_matches=[],
         changes=[],

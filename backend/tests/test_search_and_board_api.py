@@ -103,7 +103,11 @@ def test_move_card_endpoint():
         tender_result.scalar_one_or_none.return_value = t1
         entry_result = MagicMock()
         entry_result.scalar_one_or_none.return_value = None
-        session.execute = AsyncMock(side_effect=[tender_result, entry_result])
+        history_result = MagicMock()
+        history_result.scalars.return_value.all.return_value = []
+        session.execute = AsyncMock(
+            side_effect=[tender_result, entry_result, history_result]
+        )
         session.add = MagicMock()
         session.commit = AsyncMock()
         session.refresh = AsyncMock()

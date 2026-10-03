@@ -25,6 +25,9 @@ from app.schemas import (
     Stage,
     StageUpdate,
 )
+from app.services.red_flags import evaluate_all_red_flags
+from app.services.tags import tags_for_cpv
+from app.services.win_chance import estimate_win_chance
 
 router = APIRouter()
 
@@ -62,8 +65,18 @@ def _eligibility_share(card: BoardCard) -> float | None:
     return summary.met_count / checkable
 
 
-def _to_card(tender: Tender, entry: BoardEntry | None) -> BoardCard:
+def _to_card(
+    tender: Tender, entry: BoardEntry | None, historical_awards: list[Award]
+) -> BoardCard:
     amt = tender.estimated_amount or 0.0
+    red_flags = evaluate_all_red_flags(
+        tender=tender,
+        buyer=None,
+        historical_awards=historical_awards,
+        chunk_texts=[],
+    )
+    win_chance = estimate_win_chance(tender, historical_awards)
+
     return BoardCard(
         tender_id=str(tender.id),
         title=tender.title or "Achiziție publică",
@@ -83,9 +96,9 @@ def _to_card(tender: Tender, entry: BoardEntry | None) -> BoardCard:
         stage_reason=entry.stage_reason if entry else None,
         questionable_reasons=[],
         eligibility=EligibilitySummary(met_count=3, total_count=3, unknown_count=0),
-        win_probability=0.45,
-        tags=["IT", "Hardware"] if "30" in str(tender.cpv_codes) else ["Achiziții"],
-        red_flag_count=0,
+        win_probability=win_chance.estimated_probability,
+        tags=tags_for_cpv(tender.cpv_codes),
+        red_flag_count=sum(1 for flag in red_flags if flag.triggered),
         changed_in_last_sync=False,
     )
 
@@ -131,10 +144,17 @@ async def get_board(
     )
     entries = {e.tender_id: e for e in entries_res.scalars().all()}
 
+    # 4. Awards grouped by buyer, for win chance and integrity signals
+    awards_by_buyer: dict[int, list[Award]] = {}
+    for t in tenders:
+        if t.buyer_id is not None:
+            awards_by_buyer.setdefault(t.buyer_id, []).extend(t.awards or [])
+
     cards: list[BoardCard] = []
 
     for t in tenders:
-        card = _to_card(t, entries.get(t.id))
+        historical = awards_by_buyer.get(t.buyer_id, []) if t.buyer_id else []
+        card = _to_card(t, entries.get(t.id), historical)
 
         if price_min is not None or price_max is not None:
             amount = t.estimated_amount
@@ -223,4 +243,13 @@ async def move_card(
     await db.commit()
     await db.refresh(entry)
 
-    return _to_card(tender, entry)
+    historical: list[Award] = []
+    if tender.buyer_id is not None:
+        hist_res = await db.execute(
+            select(Award)
+            .join(Tender, Award.tender_id == Tender.id)
+            .where(Tender.buyer_id == tender.buyer_id)
+        )
+        historical = list(hist_res.scalars().all())
+
+    return _to_card(tender, entry, historical)
