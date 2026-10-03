@@ -89,11 +89,13 @@ def test_get_board_uses_persisted_stage():
     tenders_result.scalars.return_value.all.return_value = [_tender()]
     entries_result = MagicMock()
     entries_result.scalars.return_value.all.return_value = [entry]
+    changes_result = MagicMock()
+    changes_result.scalars.return_value.all.return_value = []
 
     async def override_get_db():
         session = MagicMock()
         session.execute = AsyncMock(
-            side_effect=[profile_result, tenders_result, entries_result]
+            side_effect=[profile_result, tenders_result, entries_result, changes_result]
         )
         yield session
 

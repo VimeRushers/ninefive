@@ -35,6 +35,7 @@ from app.schemas import (
     TenderDetail,
     TenderDocument,
 )
+from app.services.eligibility import evaluate_items, fallback_eligibility_items
 from app.services.llm_analysis import complete_json
 from app.services.red_flags import ChunkRef, evaluate_all_red_flags
 from app.services.tags import tags_for_cpv
@@ -282,48 +283,6 @@ def _eligibility_item_from_llm(
     )
 
 
-def _fallback_eligibility_items(
-    tender: Tender, documents: list[Document]
-) -> list[EligibilityItem]:
-    document = documents[0] if documents else None
-
-    def cited(page: int) -> Citation | None:
-        if document is None:
-            return None
-        return Citation(
-            document_id=str(document.id),
-            document_title=document.title or f"Document {document.id}",
-            url=document.url or "",
-            page=page,
-        )
-
-    return [
-        EligibilityItem(
-            requirement="Experiență similară în domeniul achiziției în ultimii 3 ani",
-            requirement_type="technical",
-            threshold="Cel puțin 1 contract similar",
-            source_page=1,
-            citation=cited(1),
-        ),
-        EligibilityItem(
-            requirement="Cifra de afaceri medie anuală în ultimii 3 ani",
-            requirement_type="financial",
-            threshold=f"{tender.estimated_amount * 0.5:,.0f} MDL"
-            if tender.estimated_amount
-            else "500,000 MDL",
-            source_page=2,
-            citation=cited(2),
-        ),
-        EligibilityItem(
-            requirement="Garanție de bună execuție a contractului",
-            requirement_type="administrative",
-            threshold="5% din valoarea contractului",
-            source_page=2,
-            citation=cited(2),
-        ),
-    ]
-
-
 async def _extract_eligibility_with_llm(
     tender: Tender,
     chunks: list[Chunk],
@@ -355,28 +314,10 @@ async def _extract_eligibility_with_llm(
         ]
 
     if not items:
-        items = _fallback_eligibility_items(tender, documents)
+        items = fallback_eligibility_items(tender, documents)
 
-    met_count = 0
-    for it in items:
-        if profile is not None:
-            if it.requirement_type == "financial" and profile.annual_turnover:
-                turnover_amt = (
-                    profile.annual_turnover.get("amount", 0.0)
-                    if isinstance(profile.annual_turnover, dict)
-                    else 0.0
-                )
-                req_amt = (tender.estimated_amount or 0.0) * 0.5
-                it.met = turnover_amt >= req_amt
-            elif it.requirement_type == "technical" and profile.certifications:
-                it.met = len(profile.certifications) > 0
-            else:
-                it.met = True
-        else:
-            it.met = None
-
-        if it.met is True:
-            met_count += 1
+    evaluate_items(items, profile, tender)
+    met_count = sum(1 for item in items if item.met is True)
 
     return EligibilityChecklist(
         tender_id=str(tender.id),

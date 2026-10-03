@@ -17,14 +17,15 @@ from app.models.award import Award
 from app.models.board import BoardEntry
 from app.models.profile import CompanyProfile
 from app.models.tender import Tender
+from app.models.tender_change import TenderChange
 from app.schemas import (
     BoardCard,
     BoardResponse,
-    EligibilitySummary,
     MoneyAmount,
     Stage,
     StageUpdate,
 )
+from app.services.eligibility import board_eligibility
 from app.services.red_flags import evaluate_all_red_flags
 from app.services.tags import tags_for_cpv
 from app.services.win_chance import estimate_win_chance
@@ -66,7 +67,11 @@ def _eligibility_share(card: BoardCard) -> float | None:
 
 
 def _to_card(
-    tender: Tender, entry: BoardEntry | None, historical_awards: list[Award]
+    tender: Tender,
+    entry: BoardEntry | None,
+    historical_awards: list[Award],
+    profile: CompanyProfile | None = None,
+    changed_in_last_sync: bool = False,
 ) -> BoardCard:
     amt = tender.estimated_amount or 0.0
     red_flags = evaluate_all_red_flags(
@@ -76,6 +81,7 @@ def _to_card(
         chunk_texts=[],
     )
     win_chance = estimate_win_chance(tender, historical_awards)
+    eligibility_summary, questionable_reasons = board_eligibility(tender, profile)
 
     return BoardCard(
         tender_id=str(tender.id),
@@ -94,12 +100,12 @@ def _to_card(
         stage=entry.stage if entry else "new",
         stage_source=entry.stage_source if entry else "auto",
         stage_reason=entry.stage_reason if entry else None,
-        questionable_reasons=[],
-        eligibility=EligibilitySummary(met_count=3, total_count=3, unknown_count=0),
+        questionable_reasons=questionable_reasons,
+        eligibility=eligibility_summary,
         win_probability=win_chance.estimated_probability,
         tags=tags_for_cpv(tender.cpv_codes),
         red_flag_count=sum(1 for flag in red_flags if flag.triggered),
-        changed_in_last_sync=False,
+        changed_in_last_sync=changed_in_last_sync,
     )
 
 
@@ -150,11 +156,21 @@ async def get_board(
         if t.buyer_id is not None:
             awards_by_buyer.setdefault(t.buyer_id, []).extend(t.awards or [])
 
+    # 5. Tenders with a recorded change since the last sync
+    changes_res = await db.execute(select(TenderChange.tender_id))
+    changed_ids = set(changes_res.scalars().all())
+
     cards: list[BoardCard] = []
 
     for t in tenders:
         historical = awards_by_buyer.get(t.buyer_id, []) if t.buyer_id else []
-        card = _to_card(t, entries.get(t.id), historical)
+        card = _to_card(
+            t,
+            entries.get(t.id),
+            historical,
+            profile=profile,
+            changed_in_last_sync=t.id in changed_ids,
+        )
 
         if price_min is not None or price_max is not None:
             amount = t.estimated_amount

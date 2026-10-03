@@ -67,8 +67,10 @@ def test_get_board_endpoint():
         tenders_result.scalars.return_value.all.return_value = [t1]
         entries_result = MagicMock()
         entries_result.scalars.return_value.all.return_value = []
+        changes_result = MagicMock()
+        changes_result.scalars.return_value.all.return_value = []
         session.execute = AsyncMock(
-            side_effect=[profile_result, tenders_result, entries_result]
+            side_effect=[profile_result, tenders_result, entries_result, changes_result]
         )
         yield session
 
