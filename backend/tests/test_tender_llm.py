@@ -48,6 +48,7 @@ async def test_summarize_tender_falls_back_without_llm(monkeypatch):
     summaries = await tenders._summarize_tender(_tender(), _refs(), AsyncMock())
 
     assert summaries[0].text == "Desc"
+    assert summaries[0].citations[0].document_id == "ocds-1"
 
 
 async def test_judge_cpv_returns_similarity(monkeypatch):

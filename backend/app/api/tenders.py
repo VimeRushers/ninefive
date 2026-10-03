@@ -120,26 +120,32 @@ async def _summarize_tender(
     )
 
     fallback = (tender.description or "Fără descriere.")[:200]
+    notice = Citation(
+        document_id=tender.ocds_id,
+        document_title="Anunț de participare",
+        url=f"https://mtender.gov.md/tenders/{tender.ocds_id}",
+    )
     if parsed is None:
-        return [CitedText(text=fallback, citations=[])]
+        return [CitedText(text=fallback, citations=[notice])]
 
     documents_by_id = {str(d.id): d for d in (tender.documents or [])}
     summaries: list[CitedText] = []
     for item in parsed.get("summary", []):
         if isinstance(item, str):
-            summaries.append(CitedText(text=item, citations=[]))
+            summaries.append(CitedText(text=item, citations=[notice]))
             continue
         if not isinstance(item, dict):
             continue
         text = item.get("text")
         if not text:
             continue
-        citation = _citation_for(
-            documents_by_id, item.get("document_id"), item.get("page")
+        citation = (
+            _citation_for(documents_by_id, item.get("document_id"), item.get("page"))
+            or notice
         )
-        summaries.append(CitedText(text=text, citations=[citation] if citation else []))
+        summaries.append(CitedText(text=text, citations=[citation]))
 
-    return summaries or [CitedText(text=fallback, citations=[])]
+    return summaries or [CitedText(text=fallback, citations=[notice])]
 
 
 def _cited_list(
