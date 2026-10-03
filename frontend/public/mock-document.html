@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ro">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document de test</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: system-ui, sans-serif;
+        background: #f3f5f8;
+        color: #1b1f3b;
+      }
+      main {
+        max-width: 40rem;
+        margin: 4rem auto;
+        padding: 0 1rem;
+        line-height: 1.5;
+      }
+      p {
+        color: #545b74;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1 id="title">Document</h1>
+      <p id="page"></p>
+      <p>
+        Acesta e un document de test din datele mock. Când backend-ul va funcționa, linkurile vor deschide
+        documentele reale de pe MTender la pagina citată.
+      </p>
+    </main>
+    <script>
+      const params = new URLSearchParams(location.search)
+      const title = params.get('title') || 'Document'
+      document.title = title
+      document.getElementById('title').textContent = title
+      const page = new URLSearchParams(location.hash.slice(1)).get('page')
+      if (page) document.getElementById('page').textContent = 'Pagina ' + page
+    </script>
+  </body>
+</html>

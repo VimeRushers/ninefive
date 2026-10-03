@@ -1,0 +1,366 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+/* Dark mode is the data-theme attribute on <html>, set by src/theme/theme.ts. */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/*
+ * Design tokens, following the QGroup Analytics platform: forest-green brand,
+ * lime for the active state, soft panels on a pale green-gray ground.
+ * Stage and signal colors carry meaning; use them only for stages and signals.
+ */
+:root {
+  color-scheme: light;
+
+  --brand-950: #07200f;
+  --brand-900: #0b3319;
+  --brand-800: #0f4221;
+  --brand-700: #155c2f;
+  --brand-600: #1c7a3e;
+  --brand-500: #2a9a52;
+  --lime-600: #5e9a2c;
+  --lime-500: #94bd3d;
+  --lime-400: #aacb63;
+  --lime-200: #d8e9b4;
+  --lime-100: #eef5dd;
+  --on-lime: #062411;
+
+  --ground: #f2f5f3;
+  --surface: #ffffff;
+  --surface-2: #f7f9f8;
+  --surface-3: #edf2ef;
+  --scrim: rgba(7, 32, 15, 0.42);
+  --ink: #0e1a14;
+  --ink-2: #3b4a42;
+  --muted-ink: #5c6b61;
+  --faint: #7e8b83;
+  --line: #e3e9e5;
+  --line-strong: #d2dbd5;
+
+  --accent-main: #155c2f;
+  --accent-hover: #0f4221;
+  --accent-ink: #ffffff;
+  --accent-soft: #e6f0e9;
+  --accent-soft-ink: #155c2f;
+  --focus: #94bd3d;
+
+  --good: #0ca30c;
+  --good-soft: #e4f4e6;
+  --good-ink: #116e33;
+  --warning: #fab219;
+  --warning-soft: #fef3d8;
+  --warning-ink: #8a5a00;
+  --serious: #ec835a;
+  --serious-soft: #fceae2;
+  --serious-ink: #a8481f;
+  --critical: #d03b3b;
+  --critical-soft: #fbe5e5;
+  --critical-ink: #b02f2f;
+  --info-soft: #e3eefb;
+  --info-ink: #1f5fae;
+  --delta-up: #13803b;
+  --delta-down: #c43636;
+
+  --side-bg: linear-gradient(180deg, #0f4221 0%, #0b3319 62%, #092a15 100%);
+  --side-ink: rgba(255, 255, 255, 0.74);
+  --side-ink-strong: #ffffff;
+  --side-muted: rgba(255, 255, 255, 0.66);
+  --side-hover: rgba(255, 255, 255, 0.07);
+  --side-active-bg: #94bd3d;
+  --side-active-ink: #0b3319;
+  --side-line: rgba(255, 255, 255, 0.09);
+
+  --series-1: #1f8a4c;
+  --series-2: #2a78d6;
+  --series-3: #e8672f;
+  --series-4: #d6589b;
+  --series-5: #94bd3d;
+
+  --shadow-1: 0 1px 2px rgba(15, 66, 33, 0.05);
+  --shadow-2: 0 1px 2px rgba(15, 66, 33, 0.04), 0 6px 20px -8px rgba(15, 66, 33, 0.12);
+  --shadow-3: 0 2px 6px rgba(15, 66, 33, 0.06), 0 18px 44px -18px rgba(15, 66, 33, 0.24);
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-1: 0.14s;
+  --dur-2: 0.22s;
+  --dur-3: 0.36s;
+
+  /* Board stages */
+  --stage-new: var(--info-ink);
+  --stage-new-soft: var(--info-soft);
+  --stage-questionable: var(--warning-ink);
+  --stage-questionable-soft: var(--warning-soft);
+  --stage-not-interested: var(--muted-ink);
+  --stage-not-interested-soft: var(--surface-3);
+  --stage-lost: var(--critical-ink);
+  --stage-lost-soft: var(--critical-soft);
+  --stage-won: var(--good-ink);
+  --stage-won-soft: var(--good-soft);
+
+  /* Integrity signals: a warning, never an accusation */
+  --signal: var(--serious-ink);
+  --signal-soft: var(--serious-soft);
+
+  /* shadcn/ui names, mapped onto the tokens above */
+  --background: var(--ground);
+  --foreground: var(--ink);
+  --card: var(--surface);
+  --card-foreground: var(--ink);
+  --popover: var(--surface);
+  --popover-foreground: var(--ink);
+  --primary: var(--accent-main);
+  --primary-foreground: var(--accent-ink);
+  --secondary: var(--surface-3);
+  --secondary-foreground: var(--ink);
+  --muted: var(--surface-2);
+  --muted-foreground: var(--muted-ink);
+  --accent: var(--accent-soft);
+  --accent-foreground: var(--accent-soft-ink);
+  --destructive: var(--critical);
+  --border: var(--line);
+  --input: var(--line-strong);
+  --ring: var(--focus);
+  --radius: 10px;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --ground: #09110d;
+  --surface: #101a15;
+  --surface-2: #14201a;
+  --surface-3: #1a2821;
+  --scrim: rgba(0, 0, 0, 0.6);
+  --ink: #e8f0eb;
+  --ink-2: #b9c7bf;
+  --muted-ink: #8e9f95;
+  --faint: #5e6e65;
+  --line: #1e2b24;
+  --line-strong: #2a3a31;
+
+  --accent-main: #3fae66;
+  --accent-hover: #52c078;
+  --accent-ink: #06150c;
+  --accent-soft: #15301f;
+  --accent-soft-ink: #8fd3a6;
+
+  --good-soft: #10301a;
+  --good-ink: #3fc06b;
+  --warning-soft: #33280c;
+  --warning-ink: #e9b44c;
+  --serious-soft: #35201a;
+  --serious-ink: #f0a07e;
+  --critical-soft: #381818;
+  --critical-ink: #f07272;
+  --info-soft: #13243a;
+  --info-ink: #7fb3f0;
+  --delta-up: #3fc06b;
+  --delta-down: #f07272;
+
+  --side-bg: linear-gradient(180deg, #0a2415 0%, #081c10 62%, #06150c 100%);
+  --side-line: rgba(255, 255, 255, 0.07);
+
+  --series-1: #389d5d;
+  --series-2: #3986e5;
+  --series-3: #e6662d;
+  --series-4: #d6589b;
+  --series-5: #7ca41a;
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 24px -10px rgba(0, 0, 0, 0.6);
+  --shadow-3: 0 2px 6px rgba(0, 0, 0, 0.45), 0 22px 50px -18px rgba(0, 0, 0, 0.75);
+}
+
+@theme inline {
+  --font-sans: 'Manrope Variable', 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-heading: var(--font-sans);
+
+  --text-2xs: 0.6875rem;
+  --text-kpi: 1.625rem;
+  --text-kpi--line-height: 1.15;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-ground: var(--ground);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-scrim: var(--scrim);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-faint: var(--faint);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-lime: var(--lime-500);
+  --color-lime-soft: var(--lime-100);
+  --color-on-lime: var(--on-lime);
+  --color-brand: var(--brand-700);
+
+  --color-good: var(--good);
+  --color-good-soft: var(--good-soft);
+  --color-good-ink: var(--good-ink);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-ink: var(--warning-ink);
+  --color-serious-soft: var(--serious-soft);
+  --color-serious-ink: var(--serious-ink);
+  --color-critical: var(--critical);
+  --color-critical-soft: var(--critical-soft);
+  --color-critical-ink: var(--critical-ink);
+  --color-info-soft: var(--info-soft);
+  --color-info-ink: var(--info-ink);
+  --color-delta-up: var(--delta-up);
+  --color-delta-down: var(--delta-down);
+
+  --color-side-ink: var(--side-ink);
+  --color-side-ink-strong: var(--side-ink-strong);
+  --color-side-muted: var(--side-muted);
+  --color-side-hover: var(--side-hover);
+  --color-side-active: var(--side-active-bg);
+  --color-side-active-ink: var(--side-active-ink);
+  --color-side-line: var(--side-line);
+
+  --color-stage-new: var(--stage-new);
+  --color-stage-new-soft: var(--stage-new-soft);
+  --color-stage-questionable: var(--stage-questionable);
+  --color-stage-questionable-soft: var(--stage-questionable-soft);
+  --color-stage-not-interested: var(--stage-not-interested);
+  --color-stage-not-interested-soft: var(--stage-not-interested-soft);
+  --color-stage-lost: var(--stage-lost);
+  --color-stage-lost-soft: var(--stage-lost-soft);
+  --color-stage-won: var(--stage-won);
+  --color-stage-won-soft: var(--stage-won-soft);
+  --color-signal: var(--signal);
+  --color-signal-soft: var(--signal-soft);
+
+  --color-chart-1: var(--series-1);
+  --color-chart-2: var(--series-2);
+  --color-chart-3: var(--series-3);
+  --color-chart-4: var(--series-4);
+  --color-chart-5: var(--series-5);
+
+  --shadow-soft: var(--shadow-1);
+  --shadow-panel: var(--shadow-2);
+  --shadow-float: var(--shadow-3);
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-2xl: 18px;
+
+  --animate-page-in: page-in var(--dur-3) var(--ease-out) both;
+  --animate-panel-in: panel-in var(--dur-3) var(--ease-out) both;
+  --animate-pop-in: pop-in var(--dur-2) var(--ease-out) both;
+  --animate-fade-in: fade-in var(--dur-2) ease both;
+
+  @keyframes page-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes panel-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes pop-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans antialiased;
+    font-feature-settings: 'tnum' 0;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Children of .stagger appear one after another. */
+@layer components {
+  .stagger > :nth-child(2) {
+    animation-delay: 30ms;
+  }
+  .stagger > :nth-child(3) {
+    animation-delay: 60ms;
+  }
+  .stagger > :nth-child(4) {
+    animation-delay: 90ms;
+  }
+  .stagger > :nth-child(5) {
+    animation-delay: 120ms;
+  }
+  .stagger > :nth-child(6) {
+    animation-delay: 150ms;
+  }
+  .stagger > :nth-child(n + 7) {
+    animation-delay: 180ms;
+  }
+}
+
+/* The theme switch is a circle growing from the click (src/theme/theme.ts), not a crossfade. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

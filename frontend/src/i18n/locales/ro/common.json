@@ -1,0 +1,77 @@
+{
+  "app": {
+    "name": "ninefive",
+    "tagline": "Tender Copilot"
+  },
+  "nav": {
+    "label": "Navigare principală",
+    "board": "Licitații",
+    "profile": "Profilul companiei",
+    "skip": "Sari la conținut",
+    "openMenu": "Deschide meniul",
+    "closeMenu": "Închide meniul",
+    "collapse": "Restrânge meniul",
+    "expand": "Extinde meniul",
+    "breadcrumb": "Cale de navigare"
+  },
+  "language": {
+    "label": "Limba interfeței",
+    "ro": "Română",
+    "en": "English",
+    "ru": "Русский"
+  },
+  "stage": {
+    "new": "Nou",
+    "questionable": "Discutabil",
+    "not_interested": "Fără interes",
+    "lost": "Pierdut",
+    "won": "Câștigat"
+  },
+  "stageSource": {
+    "auto": "Mutat automat",
+    "manual": "Mutat manual"
+  },
+  "sync": {
+    "last": "Date MTender actualizate {{time}}",
+    "never": "Datele MTender nu au fost încă sincronizate"
+  },
+  "updated": "Actualizat {{time}}",
+  "state": {
+    "loading": "Se încarcă…",
+    "error": {
+      "title": "Datele nu s-au încărcat",
+      "description": "Serverul nu a răspuns. Verificați conexiunea și încercați din nou.",
+      "retry": "Încearcă din nou"
+    },
+    "empty": {
+      "title": "Nimic de afișat încă"
+    },
+    "notFound": {
+      "title": "Pagina nu există",
+      "description": "Linkul poate fi greșit sau licitația nu mai este disponibilă.",
+      "back": "Înapoi la licitații"
+    },
+    "inProgress": "Această secțiune este în lucru."
+  },
+  "citation": {
+    "page": "p. {{page}}",
+    "openPage": "Deschide „{{title}}” la pagina {{page}}",
+    "open": "Deschide „{{title}}”"
+  },
+  "disclaimer": {
+    "legal": "Lista de verificare e generată de un asistent AI și nu este consultanță juridică. Verificați cerințele în documentele originale ale licitației.",
+    "winChance": "Șansa de câștig e estimată doar din licitațiile trecute. Ofertele concurenților nu sunt publice înainte de deschiderea ofertelor."
+  },
+  "tags": {
+    "label": "Etichete"
+  },
+  "theme": {
+    "toDark": "Comută la tema întunecată",
+    "toLight": "Comută la tema luminoasă"
+  },
+  "demoData": "Date demo",
+  "demoDataHint": "Datele sunt de test. Cele reale apar după conectarea backend-ului.",
+  "actions": {
+    "close": "Închide"
+  }
+}
