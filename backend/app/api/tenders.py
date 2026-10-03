@@ -49,8 +49,8 @@ from app.services.win_chance import estimate_win_chance
 
 router = APIRouter()
 
-ELIGIBILITY_VERSION = "eligibility_v3"
-SUMMARY_VERSION = "summary_v1"
+ELIGIBILITY_VERSION = "eligibility_v4"
+SUMMARY_VERSION = "summary_v2"
 CPV_VERSION = "cpv_v1"
 COMPETITORS_VERSION = "competitors_v1"
 VALID_REQUIREMENT_TYPES = ("financial", "technical", "legal", "administrative")
@@ -113,8 +113,10 @@ async def _summarize_tender(
             f"CPV: {', '.join(tender.cpv_codes or []) or 'N/A'}\n\n"
             f"Document excerpts:\n{context or '(none)'}\n\n"
             'Return JSON: {"summary": [{"text": string, "document_id": int or null, '
-            '"page": int or null}]}. Write 2-4 short factual sentences in Romanian. '
-            "Cite document_id and page for each sentence."
+            '"page": int or null}]}. Write 2-3 short factual sentences in Romanian about '
+            "the scope, the key technical requirements or deliverables, quantities and the "
+            "deadline. Do not restate the title. Cite document_id and page whenever an "
+            "excerpt supports the sentence."
         ),
         validator=lambda data: isinstance(data.get("summary"), list),
     )
@@ -291,9 +293,12 @@ def _build_eligibility_prompt(
         '"requirement_type": "financial"|"technical"|"legal"|"administrative", '
         '"threshold": string or null, "document_id": int or null, '
         '"page": int or null, "met": true|false|null, "notes": string or null}]}. '
-        "Rules: base every requirement on the documents and cite document_id + page; "
-        "met=true only if the company profile clearly satisfies it, met=false if it "
-        "clearly does not, met=null if the profile does not say; never invent facts."
+        "Rules: base every requirement on the documents and cite document_id + page. "
+        "set met=true only when the company profile clearly satisfies the requirement; "
+        "set met=false when the profile shows it cannot (missing required license or "
+        "certification, a different product domain, or outside the stated capacity or "
+        "budget); set met=null only when the profile is silent on the point. Always "
+        "explain the judgement in notes. Never invent facts."
     )
 
 
