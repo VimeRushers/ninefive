@@ -4,9 +4,8 @@ Tender Board API — Kanban board supporting stages and filtering.
 
 from __future__ import annotations
 
-import math
-from datetime import datetime, timezone
-from typing import Any
+import unicodedata
+from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
@@ -28,6 +27,39 @@ from app.schemas import (
 )
 
 router = APIRouter()
+
+
+def _normalize(text: str) -> str:
+    """Lowercase and strip diacritics so "achizitionarea" matches "Achiziționarea"."""
+    decomposed = unicodedata.normalize("NFD", text)
+    return "".join(c for c in decomposed if not unicodedata.combining(c)).lower()
+
+
+def _in_date_range(value: datetime | None, start: date | None, end: date | None) -> bool:
+    if start is None and end is None:
+        return True
+    if value is None:
+        return False
+    day = value.date()
+    return (start is None or day >= start) and (end is None or day <= end)
+
+
+def _in_share(value: float | None, low: float | None, high: float | None) -> bool:
+    if low is None and high is None:
+        return True
+    if value is None:
+        return False
+    return (low is None or value >= low) and (high is None or value <= high)
+
+
+def _eligibility_share(card: BoardCard) -> float | None:
+    summary = card.eligibility
+    if summary is None:
+        return None
+    checkable = summary.total_count - summary.unknown_count
+    if checkable <= 0:
+        return None
+    return summary.met_count / checkable
 
 
 def _to_card(tender: Tender, entry: BoardEntry | None) -> BoardCard:
@@ -66,6 +98,17 @@ async def get_board(
     price_min: float | None = Query(None),
     price_max: float | None = Query(None),
     region: str | None = Query(None),
+    published_from: date | None = Query(None),
+    published_to: date | None = Query(None),
+    modified_from: date | None = Query(None),
+    modified_to: date | None = Query(None),
+    start_from: date | None = Query(None),
+    start_to: date | None = Query(None),
+    tags: list[str] = Query(default_factory=list),
+    win_min: float | None = Query(None, ge=0, le=1),
+    win_max: float | None = Query(None, ge=0, le=1),
+    eligibility_min: float | None = Query(None, ge=0, le=1),
+    eligibility_max: float | None = Query(None, ge=0, le=1),
     db: AsyncSession = Depends(get_db),
 ) -> BoardResponse:
     # 1. Fetch profile if exists
@@ -91,25 +134,54 @@ async def get_board(
     cards: list[BoardCard] = []
 
     for t in tenders:
-        # Filter price
-        amt = t.estimated_amount or 0.0
-        if price_min is not None and amt < price_min:
-            continue
-        if price_max is not None and amt > price_max:
-            continue
+        card = _to_card(t, entries.get(t.id))
+
+        if price_min is not None or price_max is not None:
+            amount = t.estimated_amount
+            if amount is None:
+                continue
+            if price_min is not None and amount < price_min:
+                continue
+            if price_max is not None and amount > price_max:
+                continue
+
         if region is not None and t.region != region:
             continue
 
-        # Filter q (case-insensitive substring)
         if q:
-            q_lower = q.lower()
-            haystack = f"{t.title or ''} {t.description or ''} {t.buyer_name or ''} {t.region or ''}".lower()
-            if not all(word in haystack for word in q_lower.split()):
+            words = _normalize(q).split()
+            haystack = _normalize(
+                " ".join(
+                    [
+                        t.title or "",
+                        t.description or "",
+                        t.buyer_name or "",
+                        t.region or "",
+                        *card.tags,
+                    ]
+                )
+            )
+            if not all(word in haystack for word in words):
                 continue
 
-        card = _to_card(t, entries.get(t.id))
+        if not _in_date_range(t.published_at, published_from, published_to):
+            continue
+        if not _in_date_range(t.updated_at, modified_from, modified_to):
+            continue
+        if not _in_date_range(t.published_at, start_from, start_to):
+            continue
+
+        if tags and not all(tag in card.tags for tag in tags):
+            continue
+
         if stages and card.stage not in stages:
             continue
+
+        if not _in_share(card.win_probability, win_min, win_max):
+            continue
+        if not _in_share(_eligibility_share(card), eligibility_min, eligibility_max):
+            continue
+
         cards.append(card)
 
     return BoardResponse(
