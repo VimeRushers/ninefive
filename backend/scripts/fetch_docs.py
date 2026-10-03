@@ -18,6 +18,12 @@ from app.models.chunk import Chunk
 from app.models.document import Document
 from app.models.tender import Tender
 from sqlalchemy import select
+
+# storage.mtender.gov.md resets requests without a browser-like User-Agent
+BROWSER_UA = (
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/120.0 Safari/537.36"
+)
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import selectinload
 
@@ -82,7 +88,9 @@ async def fetch_and_process_documents() -> None:
             return
 
         async with httpx.AsyncClient(
-            timeout=30.0, follow_redirects=True
+            timeout=30.0,
+            follow_redirects=True,
+            headers={"User-Agent": BROWSER_UA},
         ) as http_client:
             for doc in docs:
                 tender_ocds = (
@@ -102,6 +110,9 @@ async def fetch_and_process_documents() -> None:
                 print(f"Downloading {doc.url} -> {target_file}")
                 try:
                     resp = await http_client.get(doc.url)
+                    if resp.status_code == 429:
+                        await asyncio.sleep(5)
+                        resp = await http_client.get(doc.url)
                     if resp.status_code == 200:
                         target_file.write_bytes(resp.content)
                         doc.local_path = str(target_file)
@@ -124,6 +135,9 @@ async def fetch_and_process_documents() -> None:
                         print(f"Failed download {doc.url}: HTTP {resp.status_code}")
                 except Exception as exc:
                     print(f"Error processing doc {doc.id}: {exc}")
+
+                # storage.mtender.gov.md rate-limits bursts
+                await asyncio.sleep(0.5)
 
         await session.commit()
         print("Done fetching and processing documents.")

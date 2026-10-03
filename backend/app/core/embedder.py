@@ -9,12 +9,14 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import logging
 import math
-from typing import Sequence
+from typing import Any, Sequence
 
 from app.core.config import settings
 
 EMBEDDING_DIM = 1024
+logger = logging.getLogger(__name__)
 
 
 class Embedder:
@@ -38,8 +40,17 @@ class Embedder:
             from sentence_transformers import SentenceTransformer
 
             self._model = SentenceTransformer(self.model_name)
-        except Exception:
-            # Fallback to deterministic pseudo-embedding if sentence-transformers is unavailable
+        except Exception as exc:
+            if not settings.embed_allow_fallback:
+                raise RuntimeError(
+                    f"Could not load embedding model '{self.model_name}' and "
+                    "EMBED_ALLOW_FALLBACK is disabled"
+                ) from exc
+            logger.warning(
+                "sentence-transformers unavailable (%s). Falling back to deterministic "
+                "hash embeddings — semantic search results will not be meaningful.",
+                exc,
+            )
             self._model = None
         self._model_loaded = True
 

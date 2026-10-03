@@ -5,8 +5,8 @@ Tender Board API — Kanban board supporting stages and filtering.
 from __future__ import annotations
 
 import math
-from datetime import datetime, timezone
-from typing import Any
+import unicodedata
+from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
@@ -14,19 +14,215 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
+from app.core.embedder import embed_texts
 from app.models.award import Award
+from app.models.board import BoardEntry
+from app.models.llm_cache import LLMCache
 from app.models.profile import CompanyProfile
 from app.models.tender import Tender
+from app.models.tender_change import TenderChange
 from app.schemas import (
     BoardCard,
     BoardResponse,
+    Citation,
     EligibilitySummary,
     MoneyAmount,
     Stage,
     StageUpdate,
+    UnmetParameter,
 )
+from app.services.eligibility import ELIGIBILITY_VERSION
+from app.services.red_flags import evaluate_all_red_flags
+from app.services.tags import tags_for_cpv
+from app.services.win_chance import estimate_win_chance
 
 router = APIRouter()
+
+
+def _normalize(text: str) -> str:
+    """Lowercase and strip diacritics so "achizitionarea" matches "Achiziționarea"."""
+    decomposed = unicodedata.normalize("NFD", text)
+    return "".join(c for c in decomposed if not unicodedata.combining(c)).lower()
+
+
+def _in_date_range(value: datetime | None, start: date | None, end: date | None) -> bool:
+    if start is None and end is None:
+        return True
+    if value is None:
+        return False
+    day = value.date()
+    return (start is None or day >= start) and (end is None or day <= end)
+
+
+def _in_share(value: float | None, low: float | None, high: float | None) -> bool:
+    if low is None and high is None:
+        return True
+    if value is None:
+        return False
+    return (low is None or value >= low) and (high is None or value <= high)
+
+
+def _eligibility_share(card: BoardCard) -> float | None:
+    summary = card.eligibility
+    if summary is None:
+        return None
+    checkable = summary.total_count - summary.unknown_count
+    if checkable <= 0:
+        return None
+    return summary.met_count / checkable
+
+
+def _vector(value: object) -> list[float]:
+    if value is None:
+        return []
+    try:
+        return [float(x) for x in value]  # type: ignore[union-attr]
+    except TypeError:
+        return []
+
+
+def _cosine(a: list[float], b: list[float]) -> float:
+    if not a or not b or len(a) != len(b):
+        return 0.0
+    dot = sum(x * y for x, y in zip(a, b))
+    norm_a = math.sqrt(sum(x * x for x in a))
+    norm_b = math.sqrt(sum(y * y for y in b))
+    if norm_a == 0.0 or norm_b == 0.0:
+        return 0.0
+    return dot / (norm_a * norm_b)
+
+
+def _cached_eligibility(
+    items: list[dict], tender: Tender
+) -> tuple[EligibilitySummary, list[UnmetParameter]]:
+    notice = Citation(
+        document_id=tender.ocds_id,
+        document_title="Anunț de participare",
+        url=f"https://mtender.gov.md/tenders/{tender.ocds_id}",
+    )
+    docs_by_id = {str(d.id): d for d in (tender.documents or [])}
+
+    met_count = sum(1 for item in items if item.get("met") is True)
+    unknown_count = sum(1 for item in items if item.get("met") is None)
+
+    reasons: list[UnmetParameter] = []
+    for item in items:
+        if item.get("met") is not False:
+            continue
+        document = docs_by_id.get(str(item.get("document_id")))
+        citation = (
+            Citation(
+                document_id=str(document.id),
+                document_title=document.title or f"Document {document.id}",
+                url=document.url or "",
+                page=item.get("page") if isinstance(item.get("page"), int) else None,
+            )
+            if document is not None
+            else notice
+        )
+        reasons.append(
+            UnmetParameter(
+                parameter=str(item.get("requirement") or "Cerință de eligibilitate"),
+                required=str(item.get("threshold") or "conform caietului de sarcini"),
+                ours=None,
+                citation=citation,
+            )
+        )
+
+    summary = EligibilitySummary(
+        met_count=met_count, total_count=len(items), unknown_count=unknown_count
+    )
+    return summary, reasons
+
+
+def _to_card(
+    tender: Tender,
+    entry: BoardEntry | None,
+    historical_awards: list[Award],
+    profile: CompanyProfile | None = None,
+    changed_in_last_sync: bool = False,
+    cached_items: list[dict] | None = None,
+) -> BoardCard:
+    amt = tender.estimated_amount or 0.0
+    red_flags = evaluate_all_red_flags(
+        tender=tender,
+        buyer=None,
+        historical_awards=historical_awards,
+        chunk_texts=[],
+    )
+    win_chance = estimate_win_chance(tender, historical_awards)
+    if cached_items:
+        eligibility_summary, questionable_reasons = _cached_eligibility(
+            cached_items, tender
+        )
+    else:
+        eligibility_summary, questionable_reasons = None, []
+
+    return BoardCard(
+        tender_id=str(tender.id),
+        title=tender.title or "Achiziție publică",
+        mtender_url=f"https://mtender.gov.md/tenders/{tender.ocds_id}",
+        buyer_id=str(tender.buyer_id or tender.buyer_ocds_id or ""),
+        buyer_name=tender.buyer_name or "Autoritate contractantă",
+        estimated_value=MoneyAmount(amount=amt, currency=tender.currency or "MDL"),
+        region=tender.region,
+        published_at=tender.published_at
+        or tender.created_at
+        or datetime.now(timezone.utc),
+        modified_at=tender.updated_at,
+        tender_start_at=tender.published_at,
+        deadline=tender.submission_deadline,
+        stage=entry.stage if entry else "new",
+        stage_source=entry.stage_source if entry else "auto",
+        stage_reason=entry.stage_reason if entry else None,
+        questionable_reasons=questionable_reasons,
+        eligibility=eligibility_summary,
+        win_probability=win_chance.estimated_probability,
+        tags=tags_for_cpv(tender.cpv_codes),
+        red_flag_count=sum(1 for flag in red_flags if flag.triggered),
+        changed_in_last_sync=changed_in_last_sync,
+    )
+
+
+async def _semantic_board(
+    tenders: list[Tender],
+    q: str,
+    entries: dict[int, BoardEntry],
+    awards_by_buyer: dict[int, list[Award]],
+    profile: CompanyProfile | None,
+    changed_ids: set[int],
+) -> list[BoardCard]:
+    """Fallback search by meaning when no card matched the lexical query."""
+    if not any(t.embedding is not None for t in tenders):
+        return []
+
+    embeddings = await embed_texts([q], is_query=True)
+    query_vec = _vector(embeddings[0]) if embeddings else []
+    if not query_vec:
+        return []
+
+    scored: list[tuple[float, Tender]] = []
+    for tender in tenders:
+        similarity = _cosine(query_vec, _vector(tender.embedding))
+        if similarity >= 0.35:
+            scored.append((similarity, tender))
+
+    scored.sort(key=lambda item: item[0], reverse=True)
+    scored = scored[:12]
+
+    cards: list[BoardCard] = []
+    for _similarity, tender in scored:
+        historical = awards_by_buyer.get(tender.buyer_id, []) if tender.buyer_id else []
+        cards.append(
+            _to_card(
+                tender,
+                entries.get(tender.id),
+                historical,
+                profile=profile,
+                changed_in_last_sync=tender.id in changed_ids,
+            )
+        )
+    return cards
 
 
 @router.get("", response_model=BoardResponse)
@@ -37,6 +233,17 @@ async def get_board(
     price_min: float | None = Query(None),
     price_max: float | None = Query(None),
     region: str | None = Query(None),
+    published_from: date | None = Query(None),
+    published_to: date | None = Query(None),
+    modified_from: date | None = Query(None),
+    modified_to: date | None = Query(None),
+    start_from: date | None = Query(None),
+    start_to: date | None = Query(None),
+    tags: list[str] = Query(default_factory=list),
+    win_min: float | None = Query(None, ge=0, le=1),
+    win_max: float | None = Query(None, ge=0, le=1),
+    eligibility_min: float | None = Query(None, ge=0, le=1),
+    eligibility_max: float | None = Query(None, ge=0, le=1),
     db: AsyncSession = Depends(get_db),
 ) -> BoardResponse:
     # 1. Fetch profile if exists
@@ -53,56 +260,100 @@ async def get_board(
     res = await db.execute(stmt)
     tenders = list(res.scalars().all())
 
+    # 3. Persisted stages for this profile (absent entry = default "new"/"auto")
+    entries_res = await db.execute(
+        select(BoardEntry).where(BoardEntry.profile_id == profile_id)
+    )
+    entries = {e.tender_id: e for e in entries_res.scalars().all()}
+
+    # 4. Awards grouped by buyer, for win chance and integrity signals
+    awards_by_buyer: dict[int, list[Award]] = {}
+    for t in tenders:
+        if t.buyer_id is not None:
+            awards_by_buyer.setdefault(t.buyer_id, []).extend(t.awards or [])
+
+    # 5. Tenders with a recorded change since the last sync
+    changes_res = await db.execute(select(TenderChange.tender_id))
+    changed_ids = set(changes_res.scalars().all())
+
+    # 6. Cached DeepSeek eligibility for this profile (board stays LLM-free)
+    eligibility_by_tender: dict[str, list[dict]] = {}
+    if profile is not None:
+        cache_res = await db.execute(
+            select(LLMCache).where(
+                LLMCache.prompt_version
+                == f"{ELIGIBILITY_VERSION}_p{profile.id}"
+            )
+        )
+        for row in cache_res.scalars().all():
+            result = row.result
+            if isinstance(result, dict) and isinstance(result.get("items"), list):
+                eligibility_by_tender[row.tender_ocds_id] = result["items"]
+
     cards: list[BoardCard] = []
 
     for t in tenders:
-        # Filter price
-        amt = t.estimated_amount or 0.0
-        if price_min is not None and amt < price_min:
-            continue
-        if price_max is not None and amt > price_max:
-            continue
+        historical = awards_by_buyer.get(t.buyer_id, []) if t.buyer_id else []
+        card = _to_card(
+            t,
+            entries.get(t.id),
+            historical,
+            profile=profile,
+            changed_in_last_sync=t.id in changed_ids,
+            cached_items=eligibility_by_tender.get(t.ocds_id),
+        )
+
+        if price_min is not None or price_max is not None:
+            amount = t.estimated_amount
+            if amount is None:
+                continue
+            if price_min is not None and amount < price_min:
+                continue
+            if price_max is not None and amount > price_max:
+                continue
+
         if region is not None and t.region != region:
             continue
 
-        # Filter q (case-insensitive substring)
         if q:
-            q_lower = q.lower()
-            haystack = f"{t.title or ''} {t.description or ''} {t.buyer_name or ''} {t.region or ''}".lower()
-            if not all(word in haystack for word in q_lower.split()):
+            words = _normalize(q).split()
+            haystack = _normalize(
+                " ".join(
+                    [
+                        t.title or "",
+                        t.description or "",
+                        t.buyer_name or "",
+                        t.region or "",
+                        *card.tags,
+                    ]
+                )
+            )
+            if not all(word in haystack for word in words):
                 continue
 
-        card_stage: Stage = "new"
-        if stages and card_stage not in stages:
+        if not _in_date_range(t.published_at, published_from, published_to):
+            continue
+        if not _in_date_range(t.updated_at, modified_from, modified_to):
+            continue
+        if not _in_date_range(t.published_at, start_from, start_to):
             continue
 
-        cards.append(
-            BoardCard(
-                tender_id=str(t.id),
-                title=t.title or "Achiziție publică",
-                mtender_url=f"https://mtender.gov.md/tenders/{t.ocds_id}",
-                buyer_id=str(t.buyer_id or t.buyer_ocds_id or ""),
-                buyer_name=t.buyer_name or "Autoritate contractantă",
-                estimated_value=MoneyAmount(amount=amt, currency=t.currency or "MDL"),
-                region=t.region,
-                published_at=t.published_at
-                or t.created_at
-                or datetime.now(timezone.utc),
-                modified_at=t.updated_at,
-                tender_start_at=t.published_at,
-                deadline=t.submission_deadline,
-                stage=card_stage,
-                stage_source="auto",
-                stage_reason=None,
-                questionable_reasons=[],
-                eligibility=EligibilitySummary(
-                    met_count=3, total_count=3, unknown_count=0
-                ),
-                win_probability=0.45,
-                tags=["IT", "Hardware"] if "30" in str(t.cpv_codes) else ["Achiziții"],
-                red_flag_count=0,
-                changed_in_last_sync=False,
-            )
+        if tags and not all(tag in card.tags for tag in tags):
+            continue
+
+        if stages and card.stage not in stages:
+            continue
+
+        if not _in_share(card.win_probability, win_min, win_max):
+            continue
+        if not _in_share(_eligibility_share(card), eligibility_min, eligibility_max):
+            continue
+
+        cards.append(card)
+
+    if q and not cards:
+        cards = await _semantic_board(
+            tenders, q, entries, awards_by_buyer, profile, changed_ids
         )
 
     return BoardResponse(
@@ -119,37 +370,42 @@ async def move_card(
     profile_id: int = Query(1),
     db: AsyncSession = Depends(get_db),
 ) -> BoardCard:
-    stmt = select(Tender).where(
-        (Tender.ocds_id == tender_id)
-        | (Tender.id == int(tender_id) if tender_id.isdigit() else False)
+    stmt = (
+        select(Tender)
+        .where(
+            (Tender.ocds_id == tender_id)
+            | (Tender.id == int(tender_id) if tender_id.isdigit() else False)
+        )
+        .options(selectinload(Tender.documents))
     )
     res = await db.execute(stmt)
     tender = res.scalar_one_or_none()
     if not tender:
         raise HTTPException(status_code=404, detail="Tender not found")
 
-    amt = tender.estimated_amount or 0.0
-    return BoardCard(
-        tender_id=str(tender.id),
-        title=tender.title or "Achiziție publică",
-        mtender_url=f"https://mtender.gov.md/tenders/{tender.ocds_id}",
-        buyer_id=str(tender.buyer_id or tender.buyer_ocds_id or ""),
-        buyer_name=tender.buyer_name or "Autoritate contractantă",
-        estimated_value=MoneyAmount(amount=amt, currency=tender.currency or "MDL"),
-        region=tender.region,
-        published_at=tender.published_at
-        or tender.created_at
-        or datetime.now(timezone.utc),
-        modified_at=tender.updated_at,
-        tender_start_at=tender.published_at,
-        deadline=tender.submission_deadline,
-        stage=payload.stage,
-        stage_source="manual",
-        stage_reason=None,
-        questionable_reasons=[],
-        eligibility=EligibilitySummary(met_count=3, total_count=3, unknown_count=0),
-        win_probability=0.45,
-        tags=["IT", "Hardware"] if "30" in str(tender.cpv_codes) else ["Achiziții"],
-        red_flag_count=0,
-        changed_in_last_sync=False,
+    entry_res = await db.execute(
+        select(BoardEntry).where(
+            BoardEntry.profile_id == profile_id, BoardEntry.tender_id == tender.id
+        )
     )
+    entry = entry_res.scalar_one_or_none()
+    if entry is None:
+        entry = BoardEntry(profile_id=profile_id, tender_id=tender.id)
+        db.add(entry)
+
+    entry.stage = payload.stage
+    entry.stage_source = "manual"
+    entry.stage_reason = None
+    await db.commit()
+    await db.refresh(entry)
+
+    historical: list[Award] = []
+    if tender.buyer_id is not None:
+        hist_res = await db.execute(
+            select(Award)
+            .join(Tender, Award.tender_id == Tender.id)
+            .where(Tender.buyer_id == tender.buyer_id)
+        )
+        historical = list(hist_res.scalars().all())
+
+    return _to_card(tender, entry, historical)

@@ -31,14 +31,18 @@ def test_get_tender_analysis():
 
     async def override_get_db():
         session = MagicMock()
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.side_effect = [
-            tender,
-            None,
-            None,
-        ]  # tender, cache, profile
-        mock_result.scalars.return_value.all.return_value = [tender]
-        session.execute = AsyncMock(return_value=mock_result)
+        result = MagicMock()
+        seen = {"first": False}
+
+        def scalar_one_or_none():
+            if not seen["first"]:
+                seen["first"] = True
+                return tender
+            return None
+
+        result.scalar_one_or_none.side_effect = scalar_one_or_none
+        result.scalars.return_value.all.return_value = []
+        session.execute = AsyncMock(return_value=result)
         session.add = MagicMock()
         session.commit = AsyncMock()
         session.rollback = AsyncMock()
@@ -84,9 +88,18 @@ def test_get_tender_detail():
 
     async def override_get_db():
         session = MagicMock()
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = tender
-        session.execute = AsyncMock(return_value=mock_result)
+        tender_result = MagicMock()
+        tender_result.scalar_one_or_none.return_value = tender
+        changes_result = MagicMock()
+        changes_result.scalars.return_value.all.return_value = []
+        summary_result = MagicMock()
+        summary_result.scalar_one_or_none.return_value = None
+        session.execute = AsyncMock(
+            side_effect=[tender_result, changes_result, summary_result]
+        )
+        session.add = MagicMock()
+        session.commit = AsyncMock()
+        session.rollback = AsyncMock()
         yield session
 
     app.dependency_overrides[get_db] = override_get_db

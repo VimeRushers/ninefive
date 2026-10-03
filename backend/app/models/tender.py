@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Any
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -39,6 +40,9 @@ class Tender(Base):
     procedure_type: Mapped[str | None] = mapped_column(String(64))
     status: Mapped[str | None] = mapped_column(String(32))
 
+    # Multilingual embedding of title + description, for semantic search
+    embedding: Mapped[Any] = mapped_column(Vector(1024), nullable=True)
+
     # Raw OCDS data kept for re-processing without re-fetching
     raw_ocds: Mapped[Any] = mapped_column(JSONB, nullable=True)
     # List of release-package URIs that must be fanned-out to get awards/items/parties
@@ -61,3 +65,6 @@ class Tender(Base):
         "Document", back_populates="tender"
     )  # type: ignore[name-defined]
     chunks: Mapped[list["Chunk"]] = relationship("Chunk", back_populates="tender")  # type: ignore[name-defined]
+    items: Mapped[list["TenderItem"]] = relationship(  # type: ignore[name-defined]
+        "TenderItem", back_populates="tender", cascade="all, delete-orphan"
+    )

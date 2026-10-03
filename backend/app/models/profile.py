@@ -4,7 +4,7 @@ from typing import Any
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import DateTime, Float, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
 
@@ -38,4 +38,8 @@ class CompanyProfile(Base):
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    pricelists: Mapped[list["Pricelist"]] = relationship(  # type: ignore[name-defined]
+        "Pricelist", back_populates="profile", cascade="all, delete-orphan"
     )

@@ -9,12 +9,17 @@ from app.core.database import Base
 from app.models import (
     Award,
     BidStatistic,
+    BoardEntry,
     Buyer,
+    CatalogueItem,
     Chunk,
     CompanyProfile,
     Document,
     LLMCache,
+    Pricelist,
     Tender,
+    TenderChange,
+    TenderItem,
 )
 from sqlalchemy import inspect as sa_inspect
 
@@ -43,6 +48,11 @@ def test_all_models_registered_with_base():
         "documents",
         "chunks",
         "llm_cache",
+        "pricelists",
+        "catalogue_items",
+        "board_entries",
+        "tender_changes",
+        "tender_items",
     }
     assert expected.issubset(registered), f"Missing tables: {expected - registered}"
 
@@ -63,6 +73,11 @@ def test_all_models_registered_with_base():
         (Document, "documents"),
         (Chunk, "chunks"),
         (LLMCache, "llm_cache"),
+        (Pricelist, "pricelists"),
+        (CatalogueItem, "catalogue_items"),
+        (BoardEntry, "board_entries"),
+        (TenderChange, "tender_changes"),
+        (TenderItem, "tender_items"),
     ],
 )
 def test_table_name(model, expected_table):
@@ -160,6 +175,7 @@ def test_document_columns():
         "language",
         "local_path",
         "processed",
+        "participant_ocds_id",
         "created_at",
     }
     assert required.issubset(cols), f"Missing Document columns: {required - cols}"
@@ -185,6 +201,82 @@ def test_llm_cache_columns():
     assert required.issubset(cols), f"Missing LLMCache columns: {required - cols}"
 
 
+def test_pricelist_columns():
+    cols = column_names(Pricelist)
+    required = {
+        "id",
+        "profile_id",
+        "file_name",
+        "status",
+        "item_count",
+        "uploaded_at",
+    }
+    assert required.issubset(cols), f"Missing Pricelist columns: {required - cols}"
+
+
+def test_catalogue_item_columns():
+    cols = column_names(CatalogueItem)
+    required = {
+        "id",
+        "pricelist_id",
+        "name",
+        "description",
+        "price",
+        "created_at",
+        "updated_at",
+    }
+    assert required.issubset(cols), f"Missing CatalogueItem columns: {required - cols}"
+
+
+def test_tender_has_embedding_column():
+    assert "embedding" in column_names(Tender)
+
+
+def test_tender_item_columns():
+    cols = column_names(TenderItem)
+    required = {
+        "id",
+        "tender_id",
+        "description",
+        "cpv_code",
+        "quantity",
+        "unit",
+        "lot",
+        "created_at",
+    }
+    assert required.issubset(cols), f"Missing TenderItem columns: {required - cols}"
+
+
+def test_board_entry_columns():
+    cols = column_names(BoardEntry)
+    required = {
+        "id",
+        "profile_id",
+        "tender_id",
+        "stage",
+        "stage_source",
+        "stage_reason",
+        "updated_at",
+    }
+    assert required.issubset(cols), f"Missing BoardEntry columns: {required - cols}"
+
+
+def test_tender_change_columns():
+    cols = column_names(TenderChange)
+    required = {
+        "id",
+        "tender_id",
+        "synced_at",
+        "changes",
+        "verdict",
+        "reason",
+        "stage_before",
+        "stage_after",
+        "created_at",
+    }
+    assert required.issubset(cols), f"Missing TenderChange columns: {required - cols}"
+
+
 # ---------------------------------------------------------------------------
 # Relationships
 # ---------------------------------------------------------------------------
@@ -203,6 +295,32 @@ def test_buyer_has_tenders_relationship():
 def test_document_has_chunks_relationship():
     rels = {r.key for r in sa_inspect(Document).mapper.relationships}
     assert "chunks" in rels
+
+
+def test_tender_has_items_relationship():
+    rels = {r.key for r in sa_inspect(Tender).mapper.relationships}
+    assert "items" in rels
+
+
+def test_profile_has_pricelists_relationship():
+    rels = {r.key for r in sa_inspect(CompanyProfile).mapper.relationships}
+    assert "pricelists" in rels
+
+
+def test_pricelist_cascade_deletes_items():
+    rel = sa_inspect(Pricelist).mapper.relationships["items"]
+    assert "delete-orphan" in rel.cascade
+
+
+# ---------------------------------------------------------------------------
+# BoardEntry unique constraint
+# ---------------------------------------------------------------------------
+
+
+def test_board_entry_unique_constraint():
+    table = Base.metadata.tables["board_entries"]
+    constraint_names = {c.name for c in table.constraints}
+    assert "uq_board_entry_profile_tender" in constraint_names
 
 
 # ---------------------------------------------------------------------------

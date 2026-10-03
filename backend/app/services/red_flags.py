@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime, timedelta
-from typing import Any, Sequence
+from typing import NamedTuple, Sequence
 
 from app.models.award import Award
 from app.models.buyer import Buyer
@@ -16,7 +16,19 @@ from app.models.tender import Tender
 from app.schemas import Citation, CitedText, RedFlag
 
 
-def check_short_deadline(tender: Tender, min_days: int = 7) -> RedFlag:
+class ChunkRef(NamedTuple):
+    """A document chunk plus the metadata needed to cite it."""
+
+    text: str
+    document_id: str | None = None
+    document_title: str | None = None
+    page: int | None = None
+    url: str | None = None
+
+
+def check_short_deadline(
+    tender: Tender, min_days: int = 7, citation: Citation | None = None
+) -> RedFlag:
     """
     Flag tenders where the window between publication and submission deadline
     is shorter than standard statutory minimum (default 7 days).
@@ -41,7 +53,7 @@ def check_short_deadline(tender: Tender, min_days: int = 7) -> RedFlag:
         evidence.append(
             CitedText(
                 text=f"Fereastră scurtă de depunere: {window.days} zile ({published.strftime('%Y-%m-%d')} → {deadline.strftime('%Y-%m-%d')}). Recomandat: minim {min_days} zile.",
-                citations=[],
+                citations=[citation] if citation else [],
             )
         )
 
@@ -49,7 +61,10 @@ def check_short_deadline(tender: Tender, min_days: int = 7) -> RedFlag:
 
 
 def check_single_bidder_buyer(
-    buyer: Buyer | None, awards: Sequence[Award], threshold: float = 0.8
+    buyer: Buyer | None,
+    awards: Sequence[Award],
+    threshold: float = 0.8,
+    citation: Citation | None = None,
 ) -> RedFlag:
     """
     Flag buyers where historically >80% of tenders had only 1 bidder/award.
@@ -77,14 +92,18 @@ def check_single_bidder_buyer(
         evidence.append(
             CitedText(
                 text=f"{single_award_tenders} din {total_tenders} proceduri anterioare ale acestei autorități au avut un singur ofertant ({rate:.0%}).",
-                citations=[],
+                citations=[citation] if citation else [],
             )
         )
 
     return RedFlag(indicator=indicator, triggered=triggered, evidence=evidence)
 
 
-def check_repeat_winner(awards: Sequence[Award], threshold: float = 0.5) -> RedFlag:
+def check_repeat_winner(
+    awards: Sequence[Award],
+    threshold: float = 0.5,
+    citation: Citation | None = None,
+) -> RedFlag:
     """
     Flag when a single supplier won > 50% of the contracts from this buyer.
     """
@@ -109,7 +128,7 @@ def check_repeat_winner(awards: Sequence[Award], threshold: float = 0.5) -> RedF
         evidence.append(
             CitedText(
                 text=f"Furnizorul '{top_supplier}' a câștigat {top_count} din {total_awards} contracte atribuite ({share:.0%}).",
-                citations=[],
+                citations=[citation] if citation else [],
             )
         )
 
@@ -151,6 +170,7 @@ def check_brand_names(
     document_id: str | None = None,
     document_title: str | None = None,
     page_number: int | None = None,
+    url: str | None = None,
 ) -> RedFlag:
     """
     Flag mentions of specific brand names without the mandatory 'sau echivalent' qualifier.
@@ -180,7 +200,7 @@ def check_brand_names(
                     Citation(
                         document_id=document_id,
                         document_title=document_title,
-                        url="",
+                        url=url or "",
                         page=page_number,
                     )
                 )
@@ -225,32 +245,113 @@ def check_cpv_mismatch(
     return RedFlag(indicator=indicator, triggered=triggered, evidence=evidence)
 
 
+NARROW_TOLERANCE_REGEX = re.compile(
+    r"(\bde\s+exact\b|\bexact\b|\bfără\s+toleranță\b|\bfara\s+toleranta\b|"
+    r"toleranță\s*(de\s*)?0\b|toleranta\s*0\b|±\s*0(?:[.,]0+)?|"
+    r"\bточно\b|\bстрого\b|без\s+допуск|"
+    r"\bno\s+tolerance\b|\btolerance\s*(of\s*)?0\b)",
+    re.IGNORECASE,
+)
+
+
+def check_narrow_tolerances(
+    text: str | None,
+    document_id: str | None = None,
+    document_title: str | None = None,
+    page_number: int | None = None,
+    url: str | None = None,
+) -> RedFlag:
+    """Flag specs that demand exact values or near-zero tolerances."""
+    indicator = "narrow_tolerances"
+    if not text:
+        return RedFlag(indicator=indicator, triggered=False, evidence=[])
+
+    evidence: list[CitedText | str] = []
+    for line in text.splitlines():
+        line_clean = line.strip()
+        if not line_clean or not NARROW_TOLERANCE_REGEX.search(line_clean):
+            continue
+
+        citations: list[Citation] = []
+        if document_id and document_title:
+            citations.append(
+                Citation(
+                    document_id=document_id,
+                    document_title=document_title,
+                    url=url or "",
+                    page=page_number,
+                )
+            )
+        evidence.append(
+            CitedText(
+                text=(
+                    "Cerință cu toleranță îngustă sau valoare exactă: "
+                    f'"{line_clean[:120]}"'
+                ),
+                citations=citations,
+            )
+        )
+
+    return RedFlag(indicator=indicator, triggered=bool(evidence), evidence=evidence)
+
+
 def evaluate_all_red_flags(
     tender: Tender,
     buyer: Buyer | None = None,
     historical_awards: Sequence[Award] = (),
-    chunk_texts: Sequence[tuple[str, str, int]] = (),  # (text, doc_title, page)
+    chunk_texts: Sequence[ChunkRef] = (),
+    tender_citation: Citation | None = None,
+    buyer_citation: Citation | None = None,
+    cpv_labels: list[str] | None = None,
+    cpv_similarity: float | None = None,
 ) -> list[RedFlag]:
-    """Run all integrity checks on a tender."""
-    flags = [
-        check_short_deadline(tender),
-        check_single_bidder_buyer(buyer, historical_awards),
-        check_repeat_winner(historical_awards),
-    ]
+    """Run all six integrity checks, always in RED_FLAG_INDICATORS order."""
+    notice_url = tender_citation.url if tender_citation else None
 
-    # Check brand names on tender description
-    brand_flag = check_brand_names(tender.description)
-    if not brand_flag.triggered and chunk_texts:
-        for text, doc_title, page in chunk_texts:
-            chunk_flag = check_brand_names(
-                text,
-                document_id=str(tender.id),
-                document_title=doc_title,
-                page_number=page,
+    brand = check_brand_names(
+        tender.description,
+        document_id=tender.ocds_id,
+        document_title="Anunț de participare",
+        url=notice_url,
+    )
+    narrow = check_narrow_tolerances(
+        tender.description,
+        document_id=tender.ocds_id,
+        document_title="Anunț de participare",
+        url=notice_url,
+    )
+
+    for ref in chunk_texts:
+        if not brand.triggered:
+            chunk_brand = check_brand_names(
+                ref.text,
+                document_id=ref.document_id,
+                document_title=ref.document_title,
+                page_number=ref.page,
+                url=ref.url,
             )
-            if chunk_flag.triggered:
-                brand_flag = chunk_flag
-                break
-    flags.append(brand_flag)
+            if chunk_brand.triggered:
+                brand = chunk_brand
 
-    return flags
+        if ref.text and NARROW_TOLERANCE_REGEX.search(ref.text):
+            chunk_narrow = check_narrow_tolerances(
+                ref.text,
+                document_id=ref.document_id,
+                document_title=ref.document_title,
+                page_number=ref.page,
+                url=ref.url,
+            )
+            narrow = RedFlag(
+                indicator="narrow_tolerances",
+                triggered=True,
+                evidence=[*narrow.evidence, *chunk_narrow.evidence],
+            )
+
+    return [
+        check_short_deadline(tender, citation=tender_citation),
+        check_single_bidder_buyer(buyer, historical_awards, citation=buyer_citation),
+        check_repeat_winner(historical_awards, citation=buyer_citation),
+        brand,
+        narrow,
+        check_cpv_mismatch(tender.title, cpv_labels, cpv_similarity),
+    ]

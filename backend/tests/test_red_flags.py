@@ -4,9 +4,11 @@ import pytest
 from app.models.award import Award
 from app.models.buyer import Buyer
 from app.models.tender import Tender
+from app.schemas import RED_FLAG_INDICATORS, Citation
 from app.services.red_flags import (
     check_brand_names,
     check_cpv_mismatch,
+    check_narrow_tolerances,
     check_repeat_winner,
     check_short_deadline,
     check_single_bidder_buyer,
@@ -104,6 +106,61 @@ def test_brand_names_with_equivalent():
     )
     flag = check_brand_names(text)
     assert flag.triggered is False
+
+
+def test_narrow_tolerances_triggered_with_citation():
+    text = "Dimensiunile trebuie să fie de exact 1200 x 800 mm, fără toleranță."
+
+    flag = check_narrow_tolerances(
+        text,
+        document_id="doc-1",
+        document_title="Caiet de sarcini",
+        page_number=3,
+        url="https://example.test/doc-1.pdf",
+    )
+
+    assert flag.triggered is True
+    assert flag.indicator == "narrow_tolerances"
+    assert flag.evidence[0].citations[0].page == 3
+
+
+def test_narrow_tolerances_not_triggered():
+    text = "Dimensiunile aproximative ale încăperii sunt 12 x 8 m."
+
+    assert check_narrow_tolerances(text).triggered is False
+
+
+def test_evaluate_all_red_flags_returns_every_indicator():
+    now = datetime(2026, 10, 1, 10, 0, tzinfo=timezone.utc)
+    tender = Tender(id=1, title="Laptopuri", description="Laptop Dell")
+
+    flags = evaluate_all_red_flags(tender)
+
+    assert [flag.indicator for flag in flags] == list(RED_FLAG_INDICATORS)
+
+
+def test_triggered_flags_carry_citations():
+    now = datetime(2026, 10, 1, 10, 0, tzinfo=timezone.utc)
+    tender = Tender(
+        id=1,
+        ocds_id="ocds-1",
+        title="Laptopuri",
+        description="Laptop Dell Inspiron",
+        published_at=now,
+        submission_deadline=now + timedelta(days=3),
+    )
+    citation = Citation(
+        document_id="ocds-1",
+        document_title="Anunț de participare",
+        url="https://mtender.gov.md/tenders/ocds-1",
+    )
+
+    flags = evaluate_all_red_flags(tender, tender_citation=citation)
+
+    short = next(f for f in flags if f.indicator == "short_submission_window")
+    brand = next(f for f in flags if f.indicator == "brand_without_equivalent")
+    assert short.triggered and short.evidence[0].citations
+    assert brand.triggered and brand.evidence[0].citations
 
 
 def test_cpv_mismatch():

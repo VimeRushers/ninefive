@@ -26,16 +26,24 @@ import app.models  # noqa: F401 — registers all ORM classes with Base.metadata
 import httpx
 from app.core.database import AsyncSessionLocal
 from app.models.award import Award
+from app.models.board import BoardEntry
 from app.models.bid import BidStatistic
 from app.models.buyer import Buyer
 from app.models.document import Document
 from app.models.tender import Tender
+from app.models.tender_change import TenderChange
+from app.models.tender_item import TenderItem
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.services.change_tracking import build_changes, verdict_for
+
 BASE_URL = "https://public.mtender.gov.md"
 PAGE_SIZE = 100
+
+# ocds_ids already processed in this run (a tender is handled twice: compiled + CN)
+_SEEN_THIS_RUN: set[str] = set()
 # Per-request timeout in seconds
 TIMEOUT = 30.0
 
@@ -52,6 +60,56 @@ def _extract_idno(party_id: str) -> str | None:
     if party_id.startswith(prefix):
         return party_id[len(prefix) :]
     return None
+
+
+SUPPLIER_ROLES = {"supplier", "tenderer", "bidder"}
+
+
+def _participant_documents(compiled: dict[str, Any]) -> list[dict[str, Any]]:
+    """Collect bidder/supplier documents from awards, parties and bids.
+
+    Competitor analysis needs documents linked to the party that submitted them,
+    which the plain tender document list does not provide.
+    """
+    found: list[dict[str, Any]] = []
+
+    def add(doc: dict, participant_ocds_id: str | None) -> None:
+        doc_id = doc.get("id")
+        doc_url = doc.get("url") or doc.get("uri")
+        if not doc_id or not doc_url:
+            return
+        found.append(
+            {
+                "ocds_id": doc_id,
+                "url": doc_url,
+                "title": doc.get("title") or doc.get("documentType"),
+                "document_type": doc.get("documentType"),
+                "language": doc.get("language"),
+                "participant_ocds_id": participant_ocds_id,
+            }
+        )
+
+    for award in compiled.get("awards") or []:
+        supplier_ids = [
+            s.get("id") for s in (award.get("suppliers") or []) if s.get("id")
+        ]
+        participant = supplier_ids[0] if supplier_ids else None
+        for doc in award.get("documents") or []:
+            add(doc, participant)
+
+    for party in compiled.get("parties") or []:
+        if set(party.get("roles") or []) & SUPPLIER_ROLES:
+            for doc in party.get("documents") or []:
+                add(doc, party.get("id"))
+
+    bids = compiled.get("bids") or {}
+    for bid in bids.get("details") or []:
+        tenderers = [t.get("id") for t in (bid.get("tenderers") or []) if t.get("id")]
+        participant = tenderers[0] if tenderers else bid.get("id")
+        for doc in bid.get("documents") or []:
+            add(doc, participant)
+
+    return found
 
 
 def _find_cn_url(packages: list[str], ocid: str) -> str | None:
@@ -141,14 +199,17 @@ async def _upsert_buyer(
     return res.scalar_one()
 
 
-async def _upsert_tender(session: AsyncSession, ocds_id: str) -> Tender:
+async def _upsert_tender(
+    session: AsyncSession, ocds_id: str
+) -> tuple[Tender, bool]:
     res = await session.execute(select(Tender).where(Tender.ocds_id == ocds_id))
     tender = res.scalar_one_or_none()
     if tender is None:
         tender = Tender(ocds_id=ocds_id)
         session.add(tender)
         await session.flush()
-    return tender
+        return tender, True
+    return tender, False
 
 
 async def _upsert_award(
@@ -160,6 +221,41 @@ async def _upsert_award(
     res = await session.execute(select(Award).where(Award.ocds_id == ocds_id))
     if res.scalar_one_or_none() is None:
         session.add(Award(ocds_id=ocds_id, tender_id=tender_id, **kwargs))
+
+
+async def _auto_stage(session: AsyncSession, tender: Tender) -> None:
+    target = (
+        "not_interested" if verdict_for(tender.status) == "irrelevant" else "questionable"
+    )
+    res = await session.execute(
+        select(BoardEntry).where(BoardEntry.tender_id == tender.id)
+    )
+    for entry in res.scalars().all():
+        if entry.stage_source == "manual":
+            continue
+        entry.stage = target
+        entry.stage_source = "auto"
+        entry.stage_reason = "Actualizare detectată la resincronizare"
+
+
+async def _upsert_tender_item(
+    session: AsyncSession,
+    tender_id: int,
+    description: str,
+    **kwargs: Any,
+) -> None:
+    res = await session.execute(
+        select(TenderItem).where(
+            TenderItem.tender_id == tender_id,
+            TenderItem.description == description,
+        )
+    )
+    if res.scalar_one_or_none() is None:
+        session.add(
+            TenderItem(
+                tender_id=tender_id, description=description, **kwargs
+            )
+        )
 
 
 async def _upsert_document(
@@ -269,7 +365,19 @@ async def process_ocid(
                 )
 
         # ---- Upsert Tender ----
-        tender = await _upsert_tender(session, ocid)
+        first_this_run = ocid not in _SEEN_THIS_RUN
+        _SEEN_THIS_RUN.add(ocid)
+        tender, created = await _upsert_tender(session, ocid)
+        previous = (
+            {
+                "deadline": tender.submission_deadline,
+                "estimated_amount": tender.estimated_amount,
+                "status": tender.status,
+                "title": tender.title,
+            }
+            if (first_this_run and not created)
+            else None
+        )
         tender.title = title or tender.title
         tender.description = description or tender.description
         tender.buyer_id = buyer_id_db or tender.buyer_id
@@ -289,6 +397,26 @@ async def process_ocid(
         tender.ocds_packages = packages or tender.ocds_packages
 
         await session.flush()
+
+        if previous is not None:
+            current = {
+                "deadline": tender.submission_deadline,
+                "estimated_amount": tender.estimated_amount,
+                "status": tender.status,
+                "title": tender.title,
+            }
+            detected = build_changes(previous, current)
+            if detected:
+                session.add(
+                    TenderChange(
+                        tender_id=tender.id,
+                        synced_at=datetime.now(timezone.utc),
+                        changes=detected,
+                        verdict=verdict_for(tender.status),
+                        reason={"text": "; ".join(detected), "citations": []},
+                    )
+                )
+                await _auto_stage(session, tender)
 
         # ---- Awards ----
         # Build a supplier lookup from all parties
@@ -365,6 +493,34 @@ async def process_ocid(
                 language=doc.get("language"),
             )
 
+        # ---- Participant (bidder/supplier) documents ----
+        for pdoc in _participant_documents(compiled):
+            await _upsert_document(
+                session,
+                tender.id,
+                pdoc["ocds_id"],
+                url=pdoc["url"],
+                title=pdoc["title"],
+                document_type=pdoc["document_type"],
+                language=pdoc["language"],
+                participant_ocds_id=pdoc["participant_ocds_id"],
+            )
+
+        # ---- Tender line items ----
+        for row in cr_tender.get("items") or []:
+            description = (row.get("description") or "").strip()
+            if not description:
+                continue
+            await _upsert_tender_item(
+                session,
+                tender.id,
+                description,
+                cpv_code=(row.get("classification") or {}).get("id"),
+                quantity=row.get("quantity"),
+                unit=(row.get("unit") or {}).get("name"),
+                lot=row.get("relatedLot"),
+            )
+
         # ---- Bid statistics ----
         for stat in bid_stats_raw:
             measure = stat.get("measure")
@@ -409,15 +565,6 @@ async def fetch_ocid_page(
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
-
-
-async def run(start_iso: str, limit: int, concurrency: int) -> None:
-    log.info(
-        "Starting MTender ingest: start=%s limit=%d concurrency=%d",
-        start_iso,
-        limit,
-        concurrency,
-    )
 
 
 async def run(start_iso: str, limit: int, concurrency: int) -> None:

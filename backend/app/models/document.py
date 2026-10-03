@@ -14,6 +14,8 @@ class Document(Base):
     tender_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("tenders.id"), index=True
     )
+    # Set for bid/offer documents; null for tender-level documents
+    participant_ocds_id: Mapped[str | None] = mapped_column(String(128), index=True)
 
     url: Mapped[str] = mapped_column(Text)
     title: Mapped[str | None] = mapped_column(Text)
