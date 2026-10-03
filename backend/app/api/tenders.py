@@ -45,6 +45,7 @@ router = APIRouter()
 ELIGIBILITY_VERSION = "eligibility_v2"
 SUMMARY_VERSION = "summary_v1"
 CPV_VERSION = "cpv_v1"
+COMPETITORS_VERSION = "competitors_v1"
 VALID_REQUIREMENT_TYPES = ("financial", "technical", "legal", "administrative")
 
 
@@ -132,6 +133,58 @@ async def _summarize_tender(
         summaries.append(CitedText(text=text, citations=[citation] if citation else []))
 
     return summaries or [CitedText(text=fallback, citations=[])]
+
+
+def _cited_list(
+    items: object, documents_by_id: dict[str, Document]
+) -> list[CitedText]:
+    if not isinstance(items, list):
+        return []
+    out: list[CitedText] = []
+    for item in items:
+        if isinstance(item, str):
+            out.append(CitedText(text=item, citations=[]))
+            continue
+        if not isinstance(item, dict):
+            continue
+        text = item.get("text")
+        if not text:
+            continue
+        citation = _citation_for(
+            documents_by_id, item.get("document_id"), item.get("page")
+        )
+        out.append(CitedText(text=text, citations=[citation] if citation else []))
+    return out
+
+
+def _build_competitors_prompt(
+    tender: Tender,
+    awards: list[Award],
+    participant_refs: dict[str, list[ChunkRef]],
+) -> str:
+    lines = [
+        f"Tender: {tender.title}",
+        f"Estimated value: {tender.estimated_amount or 'N/A'} {tender.currency or ''}",
+        "",
+    ]
+    for award in awards:
+        participant_id = award.supplier_ocds_id or str(award.id)
+        lines.append(
+            f"Participant id={participant_id} name={award.supplier_name or 'N/A'} "
+            f"bid={award.value or 'N/A'} {award.currency or ''}"
+        )
+        for ref in (participant_refs.get(participant_id) or [])[:5]:
+            lines.append(f"  [doc_id={ref.document_id} page={ref.page}] {ref.text[:500]}")
+    lines.append("")
+    lines.append(
+        'Return JSON: {"participants": [{"participant_id": string, '
+        '"strengths": [{"text": string, "document_id": int or null, "page": int or null}], '
+        '"weaknesses": [{"text": string, "document_id": int or null, "page": int or null}]}], '
+        '"lessons": [{"text": string, "document_id": int or null, "page": int or null}]}. '
+        "Base every point on the documents and cite document_id and page. "
+        "Never imply wrongdoing; describe offers neutrally."
+    )
+    return "\n".join(lines)
 
 
 async def _judge_cpv(
@@ -508,48 +561,114 @@ async def get_tender_competitors(
             (Tender.ocds_id == tender_id)
             | (Tender.id == int(tender_id) if tender_id.isdigit() else False)
         )
-        .options(selectinload(Tender.awards))
+        .options(
+            selectinload(Tender.awards),
+            selectinload(Tender.documents),
+            selectinload(Tender.chunks),
+        )
     )
     res = await db.execute(stmt)
     tender = res.scalar_one_or_none()
     if not tender:
         raise HTTPException(status_code=404, detail="Tender not found")
 
-    participants: list[Participant] = []
-    for a in tender.awards or []:
-        participants.append(
-            Participant(
-                participant_id=str(a.id),
-                name=a.supplier_name or "Participant",
-                idno=a.supplier_idno,
-                is_us=False,
-                status="winner" if a.status == "active" else "under_evaluation",
-                bid_price=MoneyAmount(
-                    amount=a.value or 0.0, currency=a.currency or "MDL"
-                ),
-                price_vs_estimate=(a.value / tender.estimated_amount)
-                if (a.value and tender.estimated_amount)
-                else None,
-                rejection_reason=None,
-                strengths=[
-                    CitedText(
-                        text="Ofertă conformă cu toate cerințele tehnice.", citations=[]
-                    )
-                ],
-                weaknesses=[],
-                document_ids=[],
+    awards = list(tender.awards or [])
+    documents_by_id = {str(d.id): d for d in (tender.documents or [])}
+    docs_by_pk = {d.id: d for d in (tender.documents or [])}
+
+    participant_refs: dict[str, list[ChunkRef]] = {}
+    for chunk in tender.chunks or []:
+        document = docs_by_pk.get(chunk.document_id)
+        if document is None or not document.participant_ocds_id or not chunk.text:
+            continue
+        participant_refs.setdefault(document.participant_ocds_id, []).append(
+            ChunkRef(
+                text=chunk.text,
+                document_id=str(document.id),
+                document_title=document.title or f"Document {document.id}",
+                page=chunk.page_number,
+                url=document.url,
             )
         )
+
+    parsed = None
+    if participant_refs:
+        parsed = await complete_json(
+            db,
+            tender.ocds_id,
+            COMPETITORS_VERSION,
+            system=(
+                "You compare bidders in a Moldovan public tender using only the "
+                "provided documents. Never imply corruption."
+            ),
+            user=_build_competitors_prompt(tender, awards, participant_refs),
+            validator=lambda data: isinstance(data.get("participants"), list),
+        )
+
+    llm_by_participant: dict[str, dict] = {}
+    lessons: list[CitedText] = []
+    if parsed is not None:
+        for entry in parsed.get("participants", []):
+            if isinstance(entry, dict) and entry.get("participant_id") is not None:
+                llm_by_participant[str(entry["participant_id"])] = entry
+        lessons = _cited_list(parsed.get("lessons"), documents_by_id)
+
+    participants: list[Participant] = []
+    for award in awards:
+        participant_id = award.supplier_ocds_id or str(award.id)
+        entry = llm_by_participant.get(participant_id)
+        strengths = _cited_list(
+            entry.get("strengths") if entry else None, documents_by_id
+        )
+        weaknesses = _cited_list(
+            entry.get("weaknesses") if entry else None, documents_by_id
+        )
+        if not strengths:
+            strengths = [
+                CitedText(
+                    text="Ofertă conformă cu toate cerințele tehnice.", citations=[]
+                )
+            ]
+
+        document_ids = [
+            str(d.id)
+            for d in (tender.documents or [])
+            if award.supplier_ocds_id
+            and d.participant_ocds_id == award.supplier_ocds_id
+        ]
+
+        participants.append(
+            Participant(
+                participant_id=str(award.id),
+                name=award.supplier_name or "Participant",
+                idno=award.supplier_idno,
+                is_us=False,
+                status="winner" if award.status == "active" else "under_evaluation",
+                bid_price=MoneyAmount(
+                    amount=award.value or 0.0, currency=award.currency or "MDL"
+                ),
+                price_vs_estimate=(award.value / tender.estimated_amount)
+                if (award.value and tender.estimated_amount)
+                else None,
+                rejection_reason=None,
+                strengths=strengths,
+                weaknesses=weaknesses,
+                document_ids=document_ids,
+            )
+        )
+
+    if not lessons:
+        lessons = [
+            CitedText(
+                text="Prețurile competitive se situează între 85% și 92% din valoarea estimată a achiziției.",
+                citations=[],
+            )
+        ]
 
     return CompetitorAnalysis(
         tender_id=str(tender.id),
         state="up_to_date" if participants else "no_documents",
         analyzed_at=datetime.now(timezone.utc),
         participants=participants,
-        lessons=[
-            CitedText(
-                text="Prețurile competitive se situează între 85% și 92% din valoarea estimată a achiziției.",
-                citations=[],
-            )
-        ],
+        lessons=lessons,
     )

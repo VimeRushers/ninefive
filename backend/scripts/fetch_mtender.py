@@ -54,6 +54,56 @@ def _extract_idno(party_id: str) -> str | None:
     return None
 
 
+SUPPLIER_ROLES = {"supplier", "tenderer", "bidder"}
+
+
+def _participant_documents(compiled: dict[str, Any]) -> list[dict[str, Any]]:
+    """Collect bidder/supplier documents from awards, parties and bids.
+
+    Competitor analysis needs documents linked to the party that submitted them,
+    which the plain tender document list does not provide.
+    """
+    found: list[dict[str, Any]] = []
+
+    def add(doc: dict, participant_ocds_id: str | None) -> None:
+        doc_id = doc.get("id")
+        doc_url = doc.get("url") or doc.get("uri")
+        if not doc_id or not doc_url:
+            return
+        found.append(
+            {
+                "ocds_id": doc_id,
+                "url": doc_url,
+                "title": doc.get("title") or doc.get("documentType"),
+                "document_type": doc.get("documentType"),
+                "language": doc.get("language"),
+                "participant_ocds_id": participant_ocds_id,
+            }
+        )
+
+    for award in compiled.get("awards") or []:
+        supplier_ids = [
+            s.get("id") for s in (award.get("suppliers") or []) if s.get("id")
+        ]
+        participant = supplier_ids[0] if supplier_ids else None
+        for doc in award.get("documents") or []:
+            add(doc, participant)
+
+    for party in compiled.get("parties") or []:
+        if set(party.get("roles") or []) & SUPPLIER_ROLES:
+            for doc in party.get("documents") or []:
+                add(doc, party.get("id"))
+
+    bids = compiled.get("bids") or {}
+    for bid in bids.get("details") or []:
+        tenderers = [t.get("id") for t in (bid.get("tenderers") or []) if t.get("id")]
+        participant = tenderers[0] if tenderers else bid.get("id")
+        for doc in bid.get("documents") or []:
+            add(doc, participant)
+
+    return found
+
+
 def _find_cn_url(packages: list[str], ocid: str) -> str | None:
     """
     The CN package URL ends with the bare OCID (no stage suffix like -PN-, -EV-).
@@ -363,6 +413,19 @@ async def process_ocid(
                 title=doc.get("title") or doc.get("documentType"),
                 document_type=doc.get("documentType"),
                 language=doc.get("language"),
+            )
+
+        # ---- Participant (bidder/supplier) documents ----
+        for pdoc in _participant_documents(compiled):
+            await _upsert_document(
+                session,
+                tender.id,
+                pdoc["ocds_id"],
+                url=pdoc["url"],
+                title=pdoc["title"],
+                document_type=pdoc["document_type"],
+                language=pdoc["language"],
+                participant_ocds_id=pdoc["participant_ocds_id"],
             )
 
         # ---- Bid statistics ----
